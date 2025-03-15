@@ -1,9 +1,14 @@
 {
   "name": "pikais",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "A Discord bot that integrates with Deepseek API",
+  "main": "src/index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "ts-node src/index.ts",
+    "build": "tsc",
+    "dev": "nodemon src/index.ts",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
   },
   "repository": {
     "type": "git",
@@ -15,5 +20,20 @@
     "url": "https://github.com/f4mk/pikais/issues"
   },
   "homepage": "https://github.com/f4mk/pikais#readme",
-  "description": ""
+  "dependencies": {
+    "@types/dotenv": "^6.1.1",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5",
+    "openai": "^4.87.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "@typescript-eslint/eslint-plugin": "^7.1.1",
+    "@typescript-eslint/parser": "^7.1.1",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "nodemon": "^3.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
 }
