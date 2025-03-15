@@ -1,13 +1,8 @@
-import { 
-  Client, 
-  Events, 
-  GatewayIntentBits, 
-  Message, 
-  TextChannel 
-} from 'discord.js';
+import { Client, Events, GatewayIntentBits, Message, TextChannel } from 'discord.js';
 import dotenv from 'dotenv';
-import OpenAI from "openai";
-import { splitIntoChunks } from './utils';
+import OpenAI from 'openai';
+import { parseCommands, splitIntoChunks } from './utils';
+import { CLEAR_COMMAND, CONVERSATION_TIMEOUT_MS, MAX_MESSAGES } from './consts';
 
 // Load environment variables
 dotenv.config();
@@ -17,12 +12,8 @@ let isInstanceRunning = false;
 
 const openai = new OpenAI({
   baseURL: process.env.DEEPSEEK_API_URL,
-  apiKey: process.env.DEEPSEEK_API_KEY
+  apiKey: process.env.DEEPSEEK_API_KEY,
 });
-
-const MAX_MESSAGES = 20;
-const CONVERSATION_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-const CLEAR_COMMAND = '!clear';
 
 // Store conversation history for each user
 const conversationHistory = new Map<string, Array<OpenAI.Chat.ChatCompletionMessageParam>>();
@@ -39,21 +30,21 @@ const getConversationHistory = (userId: string): Array<OpenAI.Chat.ChatCompletio
     // Initialize with empty conversation history
     conversationHistory.set(userId, []);
   }
-  
+
   // Clear any existing timeout
   const existingTimeout = conversationTimeouts.get(userId);
   if (existingTimeout) {
     clearTimeout(existingTimeout);
   }
-  
+
   // Set new timeout
   const timeout = setTimeout(() => {
     conversationHistory.delete(userId);
     conversationTimeouts.delete(userId);
   }, CONVERSATION_TIMEOUT_MS);
-  
+
   conversationTimeouts.set(userId, timeout);
-  
+
   return conversationHistory.get(userId)!;
 };
 
@@ -82,7 +73,7 @@ client.once(Events.ClientReady, (readyClient): void => {
     process.exit(1);
     return;
   }
-  
+
   isInstanceRunning = true;
   console.log(`Ready! Logged in as ${readyClient.user.tag}`);
 });
@@ -96,7 +87,7 @@ client.on('disconnect', () => {
 // Handle message creation
 client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
   // Log every message we receive
-  
+
   // Ignore messages from bots
   if (message.author.bot) {
     return;
@@ -118,9 +109,7 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
 
   try {
     // Remove mention and trim the message
-    let content = message.content
-      .slice(botMention.length)
-      .trim();
+    let content = message.content.slice(botMention.length).trim();
 
     if (!content) {
       await message.reply({
@@ -138,9 +127,9 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
       try {
         const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
         // Add the replied-to message as context
-        messages.push({ 
-          role: "user", 
-          content: `Previous message: ${repliedTo.content}`
+        messages.push({
+          role: 'user',
+          content: `Previous message: ${repliedTo.content}`,
         });
       } catch (error) {
         console.error('Error fetching replied message:', error);
@@ -151,7 +140,7 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
     // Check if message starts with clear command
     if (content.slice(0, CLEAR_COMMAND.length).toLowerCase().startsWith(CLEAR_COMMAND)) {
       const userId = message.author.id;
-      
+
       // Clear any existing timeout first
       const existingTimeout = conversationTimeouts.get(userId);
       if (existingTimeout) {
@@ -164,7 +153,7 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
 
       // Get the actual prompt after !clear
       const newPrompt = content.slice(CLEAR_COMMAND.length).trim();
-      
+
       // If there's no prompt after !clear, just acknowledge the clear
       if (!newPrompt) {
         await message.reply({
@@ -179,13 +168,16 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
       content = newPrompt;
     }
 
+    // Parse commands and return settings and content
+    const { content: updatedContent, maxTokens, temperature } = parseCommands(content);
+
     if (message.channel instanceof TextChannel) {
       try {
         // Show typing indicator
         const typingMessage = await message.channel.send({ content: '...' });
-        
+
         // Add user's message to history
-        messages.push({ role: "user", content });
+        messages.push({ role: 'user', content: updatedContent });
 
         // Limit history to last MAX_MESSAGES messages
         if (messages.length > MAX_MESSAGES) {
@@ -197,24 +189,26 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
         // Make request to Deepseek API with full conversation history
         const completion = await openai.chat.completions.create({
           messages,
-          model: "deepseek-chat",
+          model: 'deepseek-chat',
           n: 1,
-          stream: false
+          stream: false,
+          max_tokens: maxTokens,
+          temperature: temperature,
         });
 
         const responseText = completion.choices[0].message.content?.trim();
 
         if (!responseText) {
           await typingMessage.edit({
-            content: 'Sorry, I couldn\'t process that request.',
+            content: "Sorry, I couldn't process that request.",
           });
           return;
         }
 
         // Add assistant's response to history
-        messages.push({ 
-          role: "assistant", 
-          content: responseText 
+        messages.push({
+          role: 'assistant',
+          content: responseText,
         });
 
         // Split response into chunks if it's too long
@@ -234,16 +228,19 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
 
         // Send remaining chunks as regular messages
         for (let i = 1; i < chunks.length; i++) {
-          if (chunks[i].trim()) { // Only send non-empty chunks
+          if (chunks[i].trim()) {
+            // Only send non-empty chunks
             await message.channel.send({
               content: chunks[i],
               allowedMentions: { repliedUser: false },
             });
           }
         }
-
       } catch (error) {
-        console.error(`Error in API request or response handling for message ${message.id}:`, error);
+        console.error(
+          `Error in API request or response handling for message ${message.id}:`,
+          error
+        );
         await message.reply({
           content: 'Sorry, something went wrong while processing your request.',
           allowedMentions: { repliedUser: true },
@@ -283,8 +280,7 @@ process.on('SIGTERM', () => {
 });
 
 // Log in to Discord
-void client.login(process.env.DISCORD_TOKEN)
-  .catch((error): void => {
-    console.error('Error logging in:', error);
-    process.exit(1);
-  });
+void client.login(process.env.DISCORD_TOKEN).catch((error): void => {
+  console.error('Error logging in:', error);
+  process.exit(1);
+});
