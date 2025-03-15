@@ -130,20 +130,25 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
       return;
     }
 
+    // Initialize messages variable
+    let messages = getConversationHistory(message.author.id);
+
     // Check if message starts with clear command
     if (content.slice(0, CLEAR_COMMAND.length).toLowerCase().startsWith(CLEAR_COMMAND)) {
       const userId = message.author.id;
-      // Clear the conversation history
-      conversationHistory.delete(userId);
-      // Clear any existing timeout
+      
+      // Clear any existing timeout first
       const existingTimeout = conversationTimeouts.get(userId);
       if (existingTimeout) {
         clearTimeout(existingTimeout);
         conversationTimeouts.delete(userId);
       }
 
+      // Clear the conversation history
+      conversationHistory.delete(userId);
+
       // Get the actual prompt after !clear
-      const newPrompt = content.slice('!clear'.length).trim();
+      const newPrompt = content.slice(CLEAR_COMMAND.length).trim();
       
       // If there's no prompt after !clear, just acknowledge the clear
       if (!newPrompt) {
@@ -154,7 +159,8 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
         return;
       }
 
-      // If there is a prompt, continue with the new prompt
+      // Initialize new conversation history and use it
+      messages = getConversationHistory(userId);
       content = newPrompt;
     }
 
@@ -162,9 +168,6 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
       try {
         // Show typing indicator
         const typingMessage = await message.channel.send({ content: '...' });
-
-        // Get conversation history for this user
-        const messages = getConversationHistory(message.author.id);
         
         // Add user's message to history
         messages.push({ role: "user", content });
