@@ -15,9 +15,49 @@ const openai = new OpenAI({
   baseURL: process.env.DEEPSEEK_API_URL,
   apiKey: process.env.DEEPSEEK_API_KEY
 });
+
 interface DeepseekResponse {
   response: string;
 }
+
+// Function to split text into chunks of maximum size
+const splitIntoChunks = (text: string, maxLength: number = 1500): string[] => {
+  const chunks: string[] = [];
+  let currentChunk = '';
+
+  // Split by newlines first to preserve formatting
+  const lines = text.split('\n');
+
+  for (const line of lines) {
+    // If the current line alone is longer than maxLength, split it by spaces
+    if (line.length > maxLength) {
+      const words = line.split(' ');
+      for (const word of words) {
+        if ((currentChunk + word).length > maxLength) {
+          if (currentChunk) {
+            chunks.push(currentChunk.trim());
+            currentChunk = '';
+          }
+        }
+        currentChunk += (currentChunk ? ' ' : '') + word;
+      }
+    } else if ((currentChunk + '\n' + line).length > maxLength) {
+      // If adding this line would exceed maxLength, start a new chunk
+      chunks.push(currentChunk.trim());
+      currentChunk = line;
+    } else {
+      // Add the line to the current chunk
+      currentChunk += (currentChunk ? '\n' : '') + line;
+    }
+  }
+
+  // Add the last chunk if it's not empty
+  if (currentChunk) {
+    chunks.push(currentChunk.trim());
+  }
+
+  return chunks;
+};
 
 // Create Discord client instance
 const client = new Client({
@@ -57,12 +97,31 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
           model: "deepseek-chat",
         });
 
-        const data =  completion.choices[0].message.content
+        const responseText = completion.choices[0].message.content;
 
-        // Edit the message with the response
+        if (!responseText) {
+          await typingMessage.edit({
+            content: 'Sorry, I couldn\'t process that request.',
+          });
+          return;
+        }
+
+        // Split response into chunks if it's too long
+        const chunks = splitIntoChunks(responseText);
+
+        // Edit the first message with the first chunk
         await typingMessage.edit({
-          content: data || 'Sorry, I couldn\'t process that request.',
+          content: chunks[0],
         });
+
+        // Send remaining chunks as new messages
+        for (let i = 1; i < chunks.length; i++) {
+          await message.channel.send({
+            content: chunks[i],
+            allowedMentions: { repliedUser: false },
+          });
+        }
+
       } catch (error) {
         await typingMessage.edit({
           content: 'Sorry, something went wrong while processing your request.',
