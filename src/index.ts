@@ -21,9 +21,14 @@ const openai = new OpenAI({
 });
 
 const MAX_MESSAGES = 20;
+const CONVERSATION_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+const CLEAR_COMMAND = '!clear';
 
 // Store conversation history for each user
 const conversationHistory = new Map<string, Array<OpenAI.Chat.ChatCompletionMessageParam>>();
+
+// Store timeouts for each user's conversation
+const conversationTimeouts = new Map<string, NodeJS.Timeout>();
 
 // Track messages being processed
 const processingMessages = new Set<string>();
@@ -34,7 +39,30 @@ const getConversationHistory = (userId: string): Array<OpenAI.Chat.ChatCompletio
     // Initialize with empty conversation history
     conversationHistory.set(userId, []);
   }
+  
+  // Clear any existing timeout
+  const existingTimeout = conversationTimeouts.get(userId);
+  if (existingTimeout) {
+    clearTimeout(existingTimeout);
+  }
+  
+  // Set new timeout
+  const timeout = setTimeout(() => {
+    conversationHistory.delete(userId);
+    conversationTimeouts.delete(userId);
+  }, CONVERSATION_TIMEOUT_MS);
+  
+  conversationTimeouts.set(userId, timeout);
+  
   return conversationHistory.get(userId)!;
+};
+
+// Function to clean up timeouts on shutdown
+const cleanupTimeouts = () => {
+  for (const timeout of conversationTimeouts.values()) {
+    clearTimeout(timeout);
+  }
+  conversationTimeouts.clear();
 };
 
 // Create Discord client instance
@@ -90,7 +118,7 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
 
   try {
     // Remove mention and trim the message
-    const content = message.content
+    let content = message.content
       .slice(botMention.length)
       .trim();
 
@@ -102,6 +130,33 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
       return;
     }
 
+    // Check if message starts with clear command
+    if (content.slice(0, CLEAR_COMMAND.length).toLowerCase().startsWith(CLEAR_COMMAND)) {
+      const userId = message.author.id;
+      // Clear the conversation history
+      conversationHistory.delete(userId);
+      // Clear any existing timeout
+      const existingTimeout = conversationTimeouts.get(userId);
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
+        conversationTimeouts.delete(userId);
+      }
+
+      // Get the actual prompt after !clear
+      const newPrompt = content.slice('!clear'.length).trim();
+      
+      // If there's no prompt after !clear, just acknowledge the clear
+      if (!newPrompt) {
+        await message.reply({
+          content: 'Your conversation history has been cleared. Starting fresh!',
+          allowedMentions: { repliedUser: true },
+        });
+        return;
+      }
+
+      // If there is a prompt, continue with the new prompt
+      content = newPrompt;
+    }
 
     if (message.channel instanceof TextChannel) {
       try {
@@ -197,12 +252,14 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
 // Handle process termination
 process.on('SIGINT', () => {
   isInstanceRunning = false;
+  cleanupTimeouts();
   client.destroy();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
   isInstanceRunning = false;
+  cleanupTimeouts();
   client.destroy();
   process.exit(0);
 });
