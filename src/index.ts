@@ -133,6 +133,21 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
     // Initialize messages variable
     let messages = getConversationHistory(message.author.id);
 
+    // If this is a reply to another message, add that message's content to history
+    if (message.reference && message.reference.messageId) {
+      try {
+        const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+        // Add the replied-to message as context
+        messages.push({ 
+          role: "user", 
+          content: `Previous message: ${repliedTo.content}`
+        });
+      } catch (error) {
+        console.error('Error fetching replied message:', error);
+        // Continue without the context if we can't fetch it
+      }
+    }
+
     // Check if message starts with clear command
     if (content.slice(0, CLEAR_COMMAND.length).toLowerCase().startsWith(CLEAR_COMMAND)) {
       const userId = message.author.id;
