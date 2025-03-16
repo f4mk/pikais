@@ -260,4 +260,94 @@ describe('parseCommands', () => {
       temperature: 0,
     });
   });
+
+  it('should handle temperature exactly at 0', () => {
+    const input = '!temp=0 Hello';
+    const result = parseCommands(input);
+    expect(result).toEqual({
+      content: 'Hello',
+      maxTokens: 4096,
+      temperature: 0,
+    });
+  });
+
+  it('should handle temperature exactly at 2', () => {
+    const input = '!temp=2 Hello';
+    const result = parseCommands(input);
+    expect(result).toEqual({
+      content: 'Hello',
+      maxTokens: 4096,
+      temperature: 2,
+    });
+  });
+
+  it('should handle decimal temperature values', () => {
+    const input = '!temp=0.7 Hello';
+    const result = parseCommands(input);
+    expect(result).toEqual({
+      content: 'Hello',
+      maxTokens: 4096,
+      temperature: 0.7,
+    });
+  });
+
+  it('should handle tokens exactly at 1', () => {
+    const input = '!tokens=1 Hello';
+    const result = parseCommands(input);
+    expect(result).toEqual({
+      content: 'Hello',
+      maxTokens: 1,
+      temperature: 1.0,
+    });
+  });
+
+  it('should handle tokens exactly at 8192', () => {
+    const input = '!tokens=8192 Hello';
+    const result = parseCommands(input);
+    expect(result).toEqual({
+      content: 'Hello',
+      maxTokens: 8192,
+      temperature: 1.0,
+    });
+  });
+
+  it('should handle invalid temperature values', () => {
+    const input = '!temp=abc Hello';
+    const result = parseCommands(input);
+    expect(result).toEqual({
+      content: 'Hello',
+      maxTokens: 4096,
+      temperature: 1.0,
+    });
+  });
+
+  it('should handle invalid tokens values', () => {
+    const input = '!tokens=xyz Hello';
+    const result = parseCommands(input);
+    expect(result).toEqual({
+      content: 'Hello',
+      maxTokens: 4096,
+      temperature: 1.0,
+    });
+  });
+
+  it('should handle content starting with spaces', () => {
+    const input = '!tokens=2000   Hello';
+    const result = parseCommands(input);
+    expect(result).toEqual({
+      content: 'Hello',
+      maxTokens: 2000,
+      temperature: 1.0,
+    });
+  });
+
+  it('should handle empty content after commands', () => {
+    const input = '!tokens=2000';
+    const result = parseCommands(input);
+    expect(result).toEqual({
+      content: '',
+      maxTokens: 2000,
+      temperature: 1.0,
+    });
+  });
 });
