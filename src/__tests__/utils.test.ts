@@ -1,5 +1,14 @@
 import { splitIntoChunks, parseCommandsIntoObject, parseCommands } from '../utils';
-import { TOKENS_COMMAND, TEMP_COMMAND } from '../consts';
+import {
+  TOKENS_COMMAND,
+  TEMP_COMMAND,
+  DEFAULT_MAX_TOKENS,
+  DEFAULT_TEMPERATURE,
+  MAX_ALLOWED_TOKENS,
+  MAX_TEMPERATURE,
+  MIN_ALLOWED_TOKENS,
+  MIN_TEMPERATURE,
+} from '../consts';
 
 describe('splitIntoChunks', () => {
   it('should return empty array for empty input', () => {
@@ -88,7 +97,7 @@ describe('parseCommands', () => {
     expect(result).toEqual({
       content: 'Hello',
       maxTokens: 2000,
-      temperature: 1.0, // DEFAULT_TEMPERATURE
+      temperature: DEFAULT_TEMPERATURE,
     });
   });
 
@@ -97,7 +106,7 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 4096, // DEFAULT_MAX_TOKENS
+      maxTokens: DEFAULT_MAX_TOKENS,
       temperature: 1.5,
     });
   });
@@ -118,7 +127,7 @@ describe('parseCommands', () => {
     expect(result).toEqual({
       content: '',
       maxTokens: 2000,
-      temperature: 1.0, // DEFAULT_TEMPERATURE
+      temperature: DEFAULT_TEMPERATURE,
     });
   });
 
@@ -138,7 +147,7 @@ describe('parseCommands', () => {
     expect(result).toEqual({
       content: 'Another content',
       maxTokens: 2000,
-      temperature: 1,
+      temperature: DEFAULT_TEMPERATURE,
     });
   });
 
@@ -147,7 +156,7 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Another content',
-      maxTokens: 4096,
+      maxTokens: DEFAULT_MAX_TOKENS,
       temperature: 1.87,
     });
   });
@@ -167,7 +176,7 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: '',
-      maxTokens: 4096, // DEFAULT_MAX_TOKENS
+      maxTokens: DEFAULT_MAX_TOKENS,
       temperature: 1.5,
     });
   });
@@ -176,8 +185,8 @@ describe('parseCommands', () => {
     const result = parseCommands('Hello');
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 4096, // DEFAULT_MAX_TOKENS
-      temperature: 1.0, // DEFAULT_TEMPERATURE
+      maxTokens: DEFAULT_MAX_TOKENS,
+      temperature: DEFAULT_TEMPERATURE,
     });
   });
 
@@ -186,8 +195,8 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 8192, // MAX_ALLOWED_TOKENS
-      temperature: 2.0, // MAX_TEMPERATURE
+      maxTokens: MAX_ALLOWED_TOKENS,
+      temperature: MAX_TEMPERATURE,
     });
   });
 
@@ -196,8 +205,8 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 4096, // DEFAULT_MAX_TOKENS
-      temperature: 1.0, // DEFAULT_TEMPERATURE
+      maxTokens: DEFAULT_MAX_TOKENS,
+      temperature: DEFAULT_TEMPERATURE,
     });
   });
 
@@ -207,7 +216,7 @@ describe('parseCommands', () => {
     expect(result).toEqual({
       content: 'Hello',
       maxTokens: 2000,
-      temperature: 1.0, // DEFAULT_TEMPERATURE
+      temperature: DEFAULT_TEMPERATURE,
     });
   });
 
@@ -216,8 +225,8 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 1, // Minimum value
-      temperature: 0, // Minimum value
+      maxTokens: MIN_ALLOWED_TOKENS,
+      temperature: MIN_TEMPERATURE,
     });
   });
 
@@ -226,8 +235,8 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 1, // Minimum value for tokens
-      temperature: 1.0, // DEFAULT_TEMPERATURE
+      maxTokens: MIN_ALLOWED_TOKENS,
+      temperature: DEFAULT_TEMPERATURE,
     });
   });
 
@@ -236,8 +245,8 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 4096, // DEFAULT_MAX_TOKENS
-      temperature: 0, // Minimum value for temperature
+      maxTokens: DEFAULT_MAX_TOKENS,
+      temperature: MIN_TEMPERATURE,
     });
   });
 
@@ -246,8 +255,8 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 1,
-      temperature: 1.0, // DEFAULT_TEMPERATURE
+      maxTokens: MIN_ALLOWED_TOKENS,
+      temperature: DEFAULT_TEMPERATURE,
     });
   });
 
@@ -256,8 +265,8 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 4096, // DEFAULT_MAX_TOKENS
-      temperature: 0,
+      maxTokens: DEFAULT_MAX_TOKENS,
+      temperature: MIN_TEMPERATURE,
     });
   });
 
@@ -266,8 +275,8 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 4096,
-      temperature: 0,
+      maxTokens: DEFAULT_MAX_TOKENS,
+      temperature: MIN_TEMPERATURE,
     });
   });
 
@@ -276,8 +285,8 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 4096,
-      temperature: 2,
+      maxTokens: DEFAULT_MAX_TOKENS,
+      temperature: MAX_TEMPERATURE,
     });
   });
 
@@ -286,7 +295,7 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 4096,
+      maxTokens: DEFAULT_MAX_TOKENS,
       temperature: 0.7,
     });
   });
@@ -296,8 +305,8 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 1,
-      temperature: 1.0,
+      maxTokens: MIN_ALLOWED_TOKENS,
+      temperature: DEFAULT_TEMPERATURE,
     });
   });
 
@@ -306,8 +315,8 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 8192,
-      temperature: 1.0,
+      maxTokens: MAX_ALLOWED_TOKENS,
+      temperature: DEFAULT_TEMPERATURE,
     });
   });
 
@@ -316,8 +325,8 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 4096,
-      temperature: 1.0,
+      maxTokens: DEFAULT_MAX_TOKENS,
+      temperature: DEFAULT_TEMPERATURE,
     });
   });
 
@@ -326,8 +335,8 @@ describe('parseCommands', () => {
     const result = parseCommands(input);
     expect(result).toEqual({
       content: 'Hello',
-      maxTokens: 4096,
-      temperature: 1.0,
+      maxTokens: DEFAULT_MAX_TOKENS,
+      temperature: DEFAULT_TEMPERATURE,
     });
   });
 
@@ -337,7 +346,7 @@ describe('parseCommands', () => {
     expect(result).toEqual({
       content: 'Hello',
       maxTokens: 2000,
-      temperature: 1.0,
+      temperature: DEFAULT_TEMPERATURE,
     });
   });
 
@@ -347,7 +356,7 @@ describe('parseCommands', () => {
     expect(result).toEqual({
       content: '',
       maxTokens: 2000,
-      temperature: 1.0,
+      temperature: DEFAULT_TEMPERATURE,
     });
   });
 });
