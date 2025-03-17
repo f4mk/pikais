@@ -10,3 +10,5 @@ export const MIN_ALLOWED_TOKENS = 1;
 export const DEFAULT_TEMPERATURE = 1.0;
 export const MAX_TEMPERATURE = 2.0;
 export const MIN_TEMPERATURE = 0.0;
+
+export const DEFAULT_SYSTEM_MESSAGE = 'You are a helpful assistant.';

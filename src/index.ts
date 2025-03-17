@@ -2,7 +2,12 @@ import { Client, Events, GatewayIntentBits, Message, TextChannel } from 'discord
 import dotenv from 'dotenv';
 import OpenAI from 'openai';
 import { parseCommands, splitIntoChunks } from './utils';
-import { CLEAR_COMMAND, CONVERSATION_TIMEOUT_MS, MAX_MESSAGES } from './consts';
+import {
+  CLEAR_COMMAND,
+  CONVERSATION_TIMEOUT_MS,
+  MAX_MESSAGES,
+  DEFAULT_SYSTEM_MESSAGE,
+} from './consts';
 
 // Load environment variables
 dotenv.config();
@@ -27,8 +32,8 @@ const processingMessages = new Set<string>();
 // Function to get or initialize conversation history
 const getConversationHistory = (userId: string): Array<OpenAI.Chat.ChatCompletionMessageParam> => {
   if (!conversationHistory.has(userId)) {
-    // Initialize with empty conversation history
-    conversationHistory.set(userId, []);
+    // Initialize with the default system message
+    conversationHistory.set(userId, [{ role: 'system', content: DEFAULT_SYSTEM_MESSAGE }]);
   }
 
   // Clear any existing timeout
@@ -148,8 +153,10 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
         conversationTimeouts.delete(userId);
       }
 
-      // Clear the conversation history
-      conversationHistory.delete(userId);
+      // Reset the conversation with a fresh system message
+      conversationHistory.set(userId, [
+        { role: 'system' as const, content: DEFAULT_SYSTEM_MESSAGE },
+      ]);
 
       // Get the actual prompt after !clear
       const newPrompt = content.slice(CLEAR_COMMAND.length).trim();
@@ -179,11 +186,10 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
         // Add user's message to history
         messages.push({ role: 'user', content: updatedContent });
 
-        // Limit history to last MAX_MESSAGES messages
+        // Limit history to last MAX_MESSAGES messages while preserving system message at index 0
         if (messages.length > MAX_MESSAGES) {
-          // Remove oldest messages to maintain the limit
-          const excessMessages = messages.length - MAX_MESSAGES;
-          messages.splice(0, excessMessages);
+          // Keep the system message at index 0 and only the most recent (MAX_MESSAGES - 1) messages
+          messages = [messages[0], ...messages.slice(-(MAX_MESSAGES - 1))];
         }
 
         // Make request to Deepseek API with full conversation history
