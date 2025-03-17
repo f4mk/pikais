@@ -3,6 +3,7 @@ export const CONVERSATION_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours in millise
 export const CLEAR_COMMAND = '!clear';
 export const TOKENS_COMMAND = '!tokens';
 export const TEMP_COMMAND = '!temp';
+export const SYSTEM_COMMAND = '!system';
 
 export const DEFAULT_MAX_TOKENS = 4096;
 export const MAX_ALLOWED_TOKENS = 8192;

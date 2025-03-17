@@ -7,6 +7,7 @@ import {
   CONVERSATION_TIMEOUT_MS,
   MAX_MESSAGES,
   DEFAULT_SYSTEM_MESSAGE,
+  SYSTEM_COMMAND,
 } from './consts';
 
 // Load environment variables
@@ -142,6 +143,34 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
       }
     }
 
+    // Check if message starts with system command
+    if (content.slice(0, SYSTEM_COMMAND.length).toLowerCase().startsWith(SYSTEM_COMMAND)) {
+      const userId = message.author.id;
+
+      // Get the text after the !system command
+      const systemPrompt = content.slice(SYSTEM_COMMAND.length).trim();
+
+      if (!systemPrompt) {
+        await message.reply({
+          content: 'Please provide a system prompt after the !system command.',
+          allowedMentions: { repliedUser: true },
+        });
+        return;
+      }
+
+      // Update the system message at index 0 (which is always present)
+      messages[0] = { role: 'system', content: systemPrompt };
+
+      // Save the updated messages back to the conversation history
+      conversationHistory.set(userId, messages);
+
+      await message.reply({
+        content: 'System prompt updated successfully!',
+        allowedMentions: { repliedUser: true },
+      });
+      return;
+    }
+
     // Check if message starts with clear command
     if (content.slice(0, CLEAR_COMMAND.length).toLowerCase().startsWith(CLEAR_COMMAND)) {
       const userId = message.author.id;
@@ -164,7 +193,8 @@ client.on(Events.MessageCreate, async (message: Message): Promise<void> => {
       // If there's no prompt after !clear, just acknowledge the clear
       if (!newPrompt) {
         await message.reply({
-          content: 'Your conversation history has been cleared. Starting fresh!',
+          content:
+            'Your conversation history has been cleared and system prompt reset to default. Starting fresh!',
           allowedMentions: { repliedUser: true },
         });
         return;
