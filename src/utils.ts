@@ -1,8 +1,6 @@
 import {
   DEFAULT_MAX_TOKENS,
   DEFAULT_TEMPERATURE,
-  MAX_ALLOWED_TOKENS,
-  MAX_TEMPERATURE,
   MIN_ALLOWED_TOKENS,
   MIN_TEMPERATURE,
   TEMP_COMMAND,
@@ -10,7 +8,10 @@ import {
 } from './consts';
 
 // Function to split text into chunks of maximum size
-export const splitIntoChunks = (text: string, maxLength: number = 1500): string[] => {
+export const splitIntoChunks = (
+  text: string,
+  maxLength: number = 1500
+): string[] => {
   if (!text) return [];
 
   const chunks: string[] = [];
@@ -33,7 +34,9 @@ export const splitIntoChunks = (text: string, maxLength: number = 1500): string[
         const words = line.split(' ');
         for (const word of words) {
           // If adding this word would exceed maxLength
-          if ((currentChunk + (currentChunk ? ' ' : '') + word).length > maxLength) {
+          if (
+            (currentChunk + (currentChunk ? ' ' : '') + word).length > maxLength
+          ) {
             // Save current chunk if not empty
             if (currentChunk) {
               chunks.push(currentChunk.trim());
@@ -79,7 +82,11 @@ export const parseCommandsIntoObject = (
       cursor++; // skip !
 
       // Read rest of command name
-      while (cursor < content.length && content[cursor] !== '=' && content[cursor] !== ' ') {
+      while (
+        cursor < content.length &&
+        content[cursor] !== '=' &&
+        content[cursor] !== ' '
+      ) {
         commandName += content[cursor];
         cursor++;
       }
@@ -88,7 +95,11 @@ export const parseCommandsIntoObject = (
       if (cursor < content.length && content[cursor] === '=') {
         cursor++; // skip =
         let value = '';
-        while (cursor < content.length && content[cursor] !== ' ' && content[cursor] !== '!') {
+        while (
+          cursor < content.length &&
+          content[cursor] !== ' ' &&
+          content[cursor] !== '!'
+        ) {
           value += content[cursor];
           cursor++;
         }
@@ -126,7 +137,10 @@ export const parseCommands = (
   // Parse values with proper validation using command constants as keys
   const maxTokens = commands[TOKENS_COMMAND]
     ? Math.min(
-        Math.max(MIN_ALLOWED_TOKENS, parseInt(commands[TOKENS_COMMAND]) || DEFAULT_MAX_TOKENS),
+        Math.max(
+          MIN_ALLOWED_TOKENS,
+          parseInt(commands[TOKENS_COMMAND]) || DEFAULT_MAX_TOKENS
+        ),
         8192
       )
     : DEFAULT_MAX_TOKENS;
@@ -136,7 +150,10 @@ export const parseCommands = (
     : DEFAULT_TEMPERATURE;
   const temperature = commands[TEMP_COMMAND]
     ? Math.min(
-        Math.max(MIN_TEMPERATURE, Number.isNaN(parsedTemp) ? DEFAULT_TEMPERATURE : parsedTemp),
+        Math.max(
+          MIN_TEMPERATURE,
+          Number.isNaN(parsedTemp) ? DEFAULT_TEMPERATURE : parsedTemp
+        ),
         2
       )
     : DEFAULT_TEMPERATURE;

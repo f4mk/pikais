@@ -1,7 +1,4 @@
-import { splitIntoChunks, parseCommandsIntoObject, parseCommands } from '../utils';
 import {
-  TOKENS_COMMAND,
-  TEMP_COMMAND,
   DEFAULT_MAX_TOKENS,
   DEFAULT_TEMPERATURE,
   MAX_ALLOWED_TOKENS,
@@ -9,6 +6,11 @@ import {
   MIN_ALLOWED_TOKENS,
   MIN_TEMPERATURE,
 } from '../consts';
+import {
+  parseCommands,
+  parseCommandsIntoObject,
+  splitIntoChunks,
+} from '../utils';
 
 describe('splitIntoChunks', () => {
   it('should return empty array for empty input', () => {
@@ -27,7 +29,12 @@ describe('splitIntoChunks', () => {
 
   it('should split long test when necessary', () => {
     const text = 'ThisIsAVery LongWord ThatShould BeSplit';
-    expect(splitIntoChunks(text, 10)).toEqual(['ThisIsAVery', 'LongWord', 'ThatShould', 'BeSplit']);
+    expect(splitIntoChunks(text, 10)).toEqual([
+      'ThisIsAVery',
+      'LongWord',
+      'ThatShould',
+      'BeSplit',
+    ]);
   });
 
   it('should preserve formatting when possible', () => {
@@ -37,7 +44,9 @@ describe('splitIntoChunks', () => {
 
   it('should keep long words intact', () => {
     const text = 'ThisIsAVeryLongWordThatShouldBeSplit';
-    expect(splitIntoChunks(text, 10)).toEqual(['ThisIsAVeryLongWordThatShouldBeSplit']);
+    expect(splitIntoChunks(text, 10)).toEqual([
+      'ThisIsAVeryLongWordThatShouldBeSplit',
+    ]);
   });
 });
 
