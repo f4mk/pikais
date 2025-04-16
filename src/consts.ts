@@ -9,6 +9,7 @@ export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 export const DEEPSEEK_API_URL =
   process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1';
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 
 // Check for required environment variables
 if (!DISCORD_TOKEN) {
@@ -20,6 +21,7 @@ if (!DEEPSEEK_API_KEY) {
 }
 
 // Note: GEMINI_API_KEY is checked at usage time
+// Note: OPENAI_API_KEY is checked at usage time
 
 // Constants
 export const MAX_MESSAGES = 20;

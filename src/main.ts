@@ -15,7 +15,7 @@ import {
   MAX_MESSAGES,
   SYSTEM_COMMAND,
 } from './consts';
-import { generateImage } from './geminiClient';
+import { generateImage } from './dalleClient';
 import {
   cleanupTimeouts,
   conversationHistory,
@@ -211,7 +211,7 @@ export async function main() {
         });
 
         try {
-          // Call the Gemini API to generate the image
+          // Call the DALL-E 3 API to generate the image
           const result = await generateImage(imagePrompt);
 
           if (result.success && Buffer.isBuffer(result.data)) {
