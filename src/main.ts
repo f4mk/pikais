@@ -11,11 +11,13 @@ import {
   CLEAR_COMMAND,
   DEFAULT_SYSTEM_MESSAGE,
   DISCORD_TOKEN,
+  GIMG_COMMAND,
   IMG_COMMAND,
   MAX_MESSAGES,
   SYSTEM_COMMAND,
 } from './consts';
 import { generateImage } from './dalleClient';
+import { generateGeminiImage } from './geminiClient';
 import {
   cleanupTimeouts,
   conversationHistory,
@@ -186,7 +188,7 @@ export async function main() {
         content = newPrompt;
       }
 
-      // Check if message starts with image generation command
+      // Check if message starts with image generation command for DALL-E
       if (
         content
           .slice(0, IMG_COMMAND.length)
@@ -206,7 +208,7 @@ export async function main() {
 
         // Show a "generating" message
         const generatingMessage = await message.reply({
-          content: '🎨 Generating your image, please wait...',
+          content: '🎨 Generating your image with DALL-E 3, please wait...',
           allowedMentions: { repliedUser: true },
         });
 
@@ -237,6 +239,63 @@ export async function main() {
           await generatingMessage.edit({
             content:
               'Sorry, something went wrong while generating your image. Please try again later.',
+            allowedMentions: { repliedUser: true },
+          });
+        }
+        return;
+      }
+      
+      // Check if message starts with Gemini image generation command
+      if (
+        content
+          .slice(0, GIMG_COMMAND.length)
+          .toLowerCase()
+          .startsWith(GIMG_COMMAND)
+      ) {
+        const imagePrompt = content.slice(GIMG_COMMAND.length).trim();
+
+        if (!imagePrompt) {
+          await message.reply({
+            content:
+              'Please provide a description of the image you want to generate after the !gimg command.',
+            allowedMentions: { repliedUser: true },
+          });
+          return;
+        }
+
+        // Show a "generating" message
+        const generatingMessage = await message.reply({
+          content: '🎨 Generating your image with Google Gemini, please wait...',
+          allowedMentions: { repliedUser: true },
+        });
+
+        try {
+          // Call the Gemini API to generate the image
+          const result = await generateGeminiImage(imagePrompt);
+
+          if (result.success && Buffer.isBuffer(result.data)) {
+            // Create an attachment directly from the buffer
+            const attachment = new AttachmentBuilder(result.data, {
+              name: 'gemini-generated-image.png',
+              description: `Image generated from prompt: ${imagePrompt} (Google Gemini)`,
+            });
+
+            // Update the message with the generated image
+            await generatingMessage.edit({
+              files: [attachment],
+              allowedMentions: { repliedUser: true },
+            });
+          } else {
+            await generatingMessage.edit({
+              content: `Failed to generate image: ${result.data}`,
+              allowedMentions: { repliedUser: true },
+            });
+          }
+        } catch (error) {
+          console.error('Error in Gemini image generation:', error);
+          await generatingMessage.edit({
+            content:
+              'Sorry, something went wrong while generating your image with Google Gemini. Please try again later.',
             allowedMentions: { repliedUser: true },
           });
         }

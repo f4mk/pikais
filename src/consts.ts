@@ -31,6 +31,7 @@ export const TOKENS_COMMAND = '!tokens';
 export const TEMP_COMMAND = '!temp';
 export const SYSTEM_COMMAND = '!system';
 export const IMG_COMMAND = '!img';
+export const GIMG_COMMAND = '!gimg';
 
 export const DEFAULT_MAX_TOKENS = 4096;
 export const MAX_ALLOWED_TOKENS = 8192;
