@@ -51,13 +51,13 @@ export async function main() {
     }
 
     isInstanceRunning = true;
-    console.log(`Ready! Logged in as ${readyClient.user.tag}`);
+    console.warn(`Ready! Logged in as ${readyClient.user.tag}`);
   });
 
   // Handle disconnect event
   client.on('disconnect', () => {
     isInstanceRunning = false;
-    console.log('Bot disconnected');
+    console.warn('Bot disconnected');
   });
 
   // Handle message creation
@@ -223,7 +223,6 @@ export async function main() {
 
             // Update the message with the generated image
             await generatingMessage.edit({
-              content: `Here's your generated image based on: "${imagePrompt}"`,
               files: [attachment],
               allowedMentions: { repliedUser: true },
             });
