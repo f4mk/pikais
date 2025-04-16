@@ -12,4 +12,5 @@ export const DEFAULT_TEMPERATURE = 1.0;
 export const MAX_TEMPERATURE = 2.0;
 export const MIN_TEMPERATURE = 0.0;
 
-export const DEFAULT_SYSTEM_MESSAGE = 'You are a helpful assistant.';
+export const DEFAULT_SYSTEM_MESSAGE =
+  'You are a helpful assistant runnig as a discord bot. When you see a user mention in your prompt, you must reference this user in your output message in appropriate way, as a user would expect you to do';
