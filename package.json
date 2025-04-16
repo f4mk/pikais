@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/f4mk/pikais#readme",
   "dependencies": {
+    "@google/genai": "^0.8.0",
     "@types/dotenv": "^6.1.1",
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",

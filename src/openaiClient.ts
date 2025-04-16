@@ -1,10 +1,12 @@
 import OpenAI from 'openai';
 
+import { DEEPSEEK_API_KEY, DEEPSEEK_API_URL } from './consts';
+
 // Create a factory function to initialize the OpenAI client
 export function createOpenAIClient() {
   return new OpenAI({
-    baseURL: process.env.DEEPSEEK_API_URL,
-    apiKey: process.env.DEEPSEEK_API_KEY,
+    baseURL: DEEPSEEK_API_URL,
+    apiKey: DEEPSEEK_API_KEY,
   });
 }
 

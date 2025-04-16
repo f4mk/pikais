@@ -1,4 +1,5 @@
 import {
+  AttachmentBuilder,
   Client,
   Events,
   GatewayIntentBits,
@@ -9,9 +10,12 @@ import {
 import {
   CLEAR_COMMAND,
   DEFAULT_SYSTEM_MESSAGE,
+  DISCORD_TOKEN,
+  IMG_COMMAND,
   MAX_MESSAGES,
   SYSTEM_COMMAND,
 } from './consts';
+import { generateImage } from './geminiClient';
 import {
   cleanupTimeouts,
   conversationHistory,
@@ -182,6 +186,64 @@ export async function main() {
         content = newPrompt;
       }
 
+      // Check if message starts with image generation command
+      if (
+        content
+          .slice(0, IMG_COMMAND.length)
+          .toLowerCase()
+          .startsWith(IMG_COMMAND)
+      ) {
+        const imagePrompt = content.slice(IMG_COMMAND.length).trim();
+
+        if (!imagePrompt) {
+          await message.reply({
+            content:
+              'Please provide a description of the image you want to generate after the !img command.',
+            allowedMentions: { repliedUser: true },
+          });
+          return;
+        }
+
+        // Show a "generating" message
+        const generatingMessage = await message.reply({
+          content: '🎨 Generating your image, please wait...',
+          allowedMentions: { repliedUser: true },
+        });
+
+        try {
+          // Call the Gemini API to generate the image
+          const result = await generateImage(imagePrompt);
+
+          if (result.success && Buffer.isBuffer(result.data)) {
+            // Create an attachment directly from the buffer
+            const attachment = new AttachmentBuilder(result.data, {
+              name: 'generated-image.png',
+              description: `Image generated from prompt: ${imagePrompt}`,
+            });
+
+            // Update the message with the generated image
+            await generatingMessage.edit({
+              content: `Here's your generated image based on: "${imagePrompt}"`,
+              files: [attachment],
+              allowedMentions: { repliedUser: true },
+            });
+          } else {
+            await generatingMessage.edit({
+              content: `Failed to generate image: ${result.data}`,
+              allowedMentions: { repliedUser: true },
+            });
+          }
+        } catch (error) {
+          console.error('Error in image generation:', error);
+          await generatingMessage.edit({
+            content:
+              'Sorry, something went wrong while generating your image. Please try again later.',
+            allowedMentions: { repliedUser: true },
+          });
+        }
+        return;
+      }
+
       // Parse commands and return settings and content
       const {
         content: updatedContent,
@@ -302,7 +364,7 @@ export async function main() {
 
   // Log in to Discord
   try {
-    await client.login(process.env.DISCORD_TOKEN);
+    await client.login(DISCORD_TOKEN);
   } catch (error) {
     console.error('Error logging in:', error);
     process.exit(1);
