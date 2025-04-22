@@ -20,9 +20,6 @@ if (!DEEPSEEK_API_KEY) {
   throw new Error('DEEPSEEK_API_KEY is required');
 }
 
-// Note: GEMINI_API_KEY is checked at usage time
-// Note: OPENAI_API_KEY is checked at usage time
-
 // Constants
 export const MAX_MESSAGES = 20;
 export const CONVERSATION_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
@@ -41,4 +38,4 @@ export const MAX_TEMPERATURE = 2.0;
 export const MIN_TEMPERATURE = 0.0;
 
 export const DEFAULT_SYSTEM_MESSAGE =
-  'You are a helpful assistant runnig as a discord bot. When you see a @user mention (e.g. @JohnDoe) in your prompt, you must reference this user in your output message in appropriate way, as a user would expect you to do';
+  'You are a helpful assistant runnig as a discord bot.';
