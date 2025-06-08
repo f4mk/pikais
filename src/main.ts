@@ -16,16 +16,86 @@ import {
   MAX_MESSAGES,
   SYSTEM_COMMAND,
 } from './consts';
-import { generateImage } from './dalleClient';
-import { generateGeminiImage } from './geminiClient';
 import {
   cleanupTimeouts,
   conversationHistory,
   conversationTimeouts,
   getConversationHistory,
 } from './history';
+import { generateImageFromService } from './imageService';
 import { openaiClient } from './openaiClient';
 import { parseCommands, splitIntoChunks } from './utils';
+
+// Helper function to handle image generation
+async function handleImageGeneration(
+  message: Message,
+  prompt: string,
+  command: typeof IMG_COMMAND | typeof GIMG_COMMAND
+): Promise<void> {
+  try {
+    const service = command === IMG_COMMAND ? 'dalle' : 'gemini';
+    const serviceName = command === IMG_COMMAND ? 'DALL-E 3' : 'Google Gemini';
+
+    // If prompt is empty, try to get it from the replied message
+    if (!prompt && message.reference?.messageId) {
+      try {
+        const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+        prompt = repliedTo.content;
+      } catch (error) {
+        console.error('Error fetching replied message:', error);
+      }
+    }
+
+    // Return early if still no prompt
+    if (!prompt) {
+      await message.reply({
+        content: `Please provide a description of the image you want to generate after the !${command} command.`,
+        allowedMentions: { repliedUser: true },
+      });
+      return;
+    }
+
+    // Show a "generating" message
+    const generatingMessage = await message.reply({
+      content: `🎨 Generating your image with ${serviceName}, please wait...`,
+      allowedMentions: { repliedUser: true },
+    });
+
+    // Generate the image
+    const result = await generateImageFromService(prompt, service);
+
+    if (result.success && Buffer.isBuffer(result.data)) {
+      // Create an attachment from the buffer
+      const attachment = new AttachmentBuilder(result.data, {
+        name: `${service}-generated-image.png`,
+        description:
+          result.description ||
+          `Image generated from prompt: ${prompt}${service === 'gemini' ? ' (Google Gemini)' : ''}`,
+      });
+
+      // Update the message with only the generated image
+      await generatingMessage.edit({
+        content: '',
+        files: [attachment],
+        allowedMentions: { repliedUser: true },
+      });
+    } else {
+      await generatingMessage.edit({
+        content: `Failed to generate image: ${result.data}`,
+        allowedMentions: { repliedUser: true },
+      });
+    }
+  } catch (error) {
+    console.error('Error in handleImageGeneration:', error);
+    await message.reply({
+      content: 'Sorry, something went wrong while generating your image.',
+      allowedMentions: { repliedUser: true },
+    });
+  } finally {
+    // Always remove the message from processing set
+    processingMessages.delete(message.id);
+  }
+}
 
 // Global instance check
 let isInstanceRunning = false;
@@ -49,7 +119,6 @@ export async function main() {
       console.error('Another instance is already running. Shutting down...');
       client.destroy();
       process.exit(1);
-      return;
     }
 
     isInstanceRunning = true;
@@ -101,9 +170,7 @@ export async function main() {
       // If this is a reply to another message, add that message's content to history
       if (message.reference && message.reference.messageId) {
         try {
-          const repliedTo = await message.channel.messages.fetch(
-            message.reference.messageId
-          );
+          const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
           // Add the replied-to message as context
           messages.push({
             role: 'user',
@@ -116,12 +183,7 @@ export async function main() {
       }
 
       // Check if message starts with system command
-      if (
-        content
-          .slice(0, SYSTEM_COMMAND.length)
-          .toLowerCase()
-          .startsWith(SYSTEM_COMMAND)
-      ) {
+      if (content.slice(0, SYSTEM_COMMAND.length).toLowerCase().startsWith(SYSTEM_COMMAND)) {
         const userId = message.author.id;
 
         // Get the text after the !system command
@@ -129,8 +191,7 @@ export async function main() {
 
         if (!systemPrompt) {
           await message.reply({
-            content:
-              'Please provide a system prompt after the !system command.',
+            content: 'Please provide a system prompt after the !system command.',
             allowedMentions: { repliedUser: true },
           });
           return;
@@ -150,12 +211,7 @@ export async function main() {
       }
 
       // Check if message starts with clear command
-      if (
-        content
-          .slice(0, CLEAR_COMMAND.length)
-          .toLowerCase()
-          .startsWith(CLEAR_COMMAND)
-      ) {
+      if (content.slice(0, CLEAR_COMMAND.length).toLowerCase().startsWith(CLEAR_COMMAND)) {
         const userId = message.author.id;
 
         // Clear any existing timeout first
@@ -189,125 +245,21 @@ export async function main() {
       }
 
       // Check if message starts with image generation command for DALL-E
-      if (
-        content
-          .slice(0, IMG_COMMAND.length)
-          .toLowerCase()
-          .startsWith(IMG_COMMAND)
-      ) {
+      if (content.slice(0, IMG_COMMAND.length).toLowerCase().startsWith(IMG_COMMAND)) {
         const imagePrompt = content.slice(IMG_COMMAND.length).trim();
-
-        if (!imagePrompt) {
-          await message.reply({
-            content:
-              'Please provide a description of the image you want to generate after the !img command.',
-            allowedMentions: { repliedUser: true },
-          });
-          return;
-        }
-
-        // Show a "generating" message
-        const generatingMessage = await message.reply({
-          content: '🎨 Generating your image with DALL-E 3, please wait...',
-          allowedMentions: { repliedUser: true },
-        });
-
-        try {
-          // Call the DALL-E 3 API to generate the image
-          const result = await generateImage(imagePrompt);
-
-          if (result.success && Buffer.isBuffer(result.data)) {
-            // Create an attachment directly from the buffer
-            const attachment = new AttachmentBuilder(result.data, {
-              name: 'generated-image.png',
-              description: `Image generated from prompt: ${imagePrompt}`,
-            });
-
-            // Update the message with the generated image
-            await generatingMessage.edit({
-              files: [attachment],
-              allowedMentions: { repliedUser: true },
-            });
-          } else {
-            await generatingMessage.edit({
-              content: `Failed to generate image: ${result.data}`,
-              allowedMentions: { repliedUser: true },
-            });
-          }
-        } catch (error) {
-          console.error('Error in image generation:', error);
-          await generatingMessage.edit({
-            content:
-              'Sorry, something went wrong while generating your image. Please try again later.',
-            allowedMentions: { repliedUser: true },
-          });
-        }
+        await handleImageGeneration(message, imagePrompt, IMG_COMMAND);
         return;
       }
-      
+
       // Check if message starts with Gemini image generation command
-      if (
-        content
-          .slice(0, GIMG_COMMAND.length)
-          .toLowerCase()
-          .startsWith(GIMG_COMMAND)
-      ) {
+      if (content.slice(0, GIMG_COMMAND.length).toLowerCase().startsWith(GIMG_COMMAND)) {
         const imagePrompt = content.slice(GIMG_COMMAND.length).trim();
-
-        if (!imagePrompt) {
-          await message.reply({
-            content:
-              'Please provide a description of the image you want to generate after the !gimg command.',
-            allowedMentions: { repliedUser: true },
-          });
-          return;
-        }
-
-        // Show a "generating" message
-        const generatingMessage = await message.reply({
-          content: '🎨 Generating your image with Google Gemini, please wait...',
-          allowedMentions: { repliedUser: true },
-        });
-
-        try {
-          // Call the Gemini API to generate the image
-          const result = await generateGeminiImage(imagePrompt);
-
-          if (result.success && Buffer.isBuffer(result.data)) {
-            // Create an attachment directly from the buffer
-            const attachment = new AttachmentBuilder(result.data, {
-              name: 'gemini-generated-image.png',
-              description: `Image generated from prompt: ${imagePrompt} (Google Gemini)`,
-            });
-
-            // Update the message with the generated image
-            await generatingMessage.edit({
-              files: [attachment],
-              allowedMentions: { repliedUser: true },
-            });
-          } else {
-            await generatingMessage.edit({
-              content: `Failed to generate image: ${result.data}`,
-              allowedMentions: { repliedUser: true },
-            });
-          }
-        } catch (error) {
-          console.error('Error in Gemini image generation:', error);
-          await generatingMessage.edit({
-            content:
-              'Sorry, something went wrong while generating your image with Google Gemini. Please try again later.',
-            allowedMentions: { repliedUser: true },
-          });
-        }
+        await handleImageGeneration(message, imagePrompt, GIMG_COMMAND);
         return;
       }
 
       // Parse commands and return settings and content
-      const {
-        content: updatedContent,
-        maxTokens,
-        temperature,
-      } = parseCommands(content);
+      const { content: updatedContent, maxTokens, temperature } = parseCommands(content);
 
       if (message.channel instanceof TextChannel) {
         try {
@@ -379,8 +331,7 @@ export async function main() {
             error
           );
           await message.reply({
-            content:
-              'Sorry, something went wrong while processing your request.',
+            content: 'Sorry, something went wrong while processing your request.',
             allowedMentions: { repliedUser: true },
           });
         }
@@ -391,10 +342,7 @@ export async function main() {
         });
       }
     } catch (error) {
-      console.error(
-        `Error in message processing for message ${message.id}:`,
-        error
-      );
+      console.error(`Error in message processing for message ${message.id}:`, error);
       await message.reply({
         content: 'Sorry, something went wrong while processing your request.',
         allowedMentions: { repliedUser: true },

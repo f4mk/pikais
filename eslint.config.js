@@ -42,17 +42,23 @@ export default [
       ],
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/ban-ts-comment': 'off',
-
-      // Prettier rules
-      'prettier/prettier': [
-        'error',
-        {
-          semi: true,
-          trailingComma: 'es5',
-          singleQuote: true,
-          printWidth: 80,
+      '@typescript-eslint/type-annotation-spacing': ['error', {
+        before: false,
+        after: true,
+        overrides: {
+          arrow: { before: true, after: true }
+        }
+      }],
+      '@typescript-eslint/member-delimiter-style': ['error', {
+        multiline: {
+          delimiter: 'semi',
+          requireLast: true
         },
-      ],
+        singleline: {
+          delimiter: 'semi',
+          requireLast: false
+        }
+      }],
 
       // Import sorting rules
       'simple-import-sort/imports': [
