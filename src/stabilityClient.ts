@@ -42,18 +42,17 @@ export async function generateStabilityImage(
     const client = getStabilityClient();
 
     let response;
-    // If we have a base image, use the edit endpoint
     if (baseImage) {
+      // Image-to-image generation
       const formData = new FormData();
       formData.append('init_image', baseImage);
       formData.append('text_prompts[0][text]', prompt);
       formData.append('text_prompts[0][weight]', '1');
-      formData.append('image_strength', '0.35'); // How much to preserve of the original image
+      formData.append('image_strength', '0.35');
       formData.append('cfg_scale', '7');
       formData.append('steps', '30');
       formData.append('samples', '1');
 
-      // Use the erase-and-replace endpoint for image modifications
       response = await fetch(
         `${client.baseUrl}/v1/generation/stable-diffusion-xl-1024-v1-0/erase-and-replace`,
         {
@@ -65,7 +64,7 @@ export async function generateStabilityImage(
         }
       );
     } else {
-      // Regular image generation without base image
+      // Text-to-image generation
       const requestBody = {
         text_prompts: [
           {

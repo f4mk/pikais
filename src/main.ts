@@ -326,7 +326,18 @@ export async function main() {
 
       // Check if message starts with Stability AI image generation command
       if (content.slice(0, SIMG_COMMAND.length).toLowerCase().startsWith(SIMG_COMMAND)) {
-        const imagePrompt = content.slice(SIMG_COMMAND.length).trim();
+        let imagePrompt = content.slice(SIMG_COMMAND.length).trim();
+
+        // If no prompt provided and there's a reply, use the replied message content
+        if (!imagePrompt && message.reference?.messageId) {
+          try {
+            const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+            imagePrompt = repliedTo.content;
+          } catch (error) {
+            console.error('Error fetching replied message:', error);
+          }
+        }
+
         await handleImageGeneration(message, imagePrompt, SIMG_COMMAND);
         return;
       }
