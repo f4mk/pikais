@@ -14,6 +14,7 @@ import {
   GIMG_COMMAND,
   IMG_COMMAND,
   MAX_MESSAGES,
+  SIMG_COMMAND,
   SYSTEM_COMMAND,
 } from './consts';
 import {
@@ -26,15 +27,45 @@ import { generateImageFromService } from './imageService';
 import { openaiClient } from './openaiClient';
 import { parseCommands, splitIntoChunks } from './utils';
 
+// Helper function to fetch image from attachment
+async function fetchImageFromAttachment(attachment: {
+  url: string;
+  contentType?: string | null;
+}): Promise<File | undefined> {
+  if (!attachment.contentType?.startsWith('image/')) {
+    return undefined;
+  }
+
+  try {
+    const response = await fetch(attachment.url);
+    if (!response.ok) throw new Error('Failed to fetch image');
+    const blob = await response.blob();
+    return new File([blob], 'image.png', { type: attachment.contentType });
+  } catch (error) {
+    console.error('Error fetching image attachment:', error);
+    throw error;
+  }
+}
+
 // Helper function to handle image generation
 async function handleImageGeneration(
   message: Message,
   prompt: string,
-  command: typeof IMG_COMMAND | typeof GIMG_COMMAND
+  command: typeof IMG_COMMAND | typeof GIMG_COMMAND | typeof SIMG_COMMAND
 ): Promise<void> {
   try {
-    const service = command === IMG_COMMAND ? 'dalle' : 'gemini';
-    const serviceName = command === IMG_COMMAND ? 'DALL-E 3' : 'Google Gemini';
+    let service: 'dalle' | 'gemini' | 'stability';
+    let serviceName;
+    if (command === IMG_COMMAND) {
+      service = 'dalle';
+      serviceName = 'DALL-E 3';
+    } else if (command === GIMG_COMMAND) {
+      service = 'gemini';
+      serviceName = 'Google Gemini';
+    } else {
+      service = 'stability';
+      serviceName = 'Stability AI';
+    }
 
     // If prompt is empty, try to get it from the replied message
     if (!prompt && message.reference?.messageId) {
@@ -55,22 +86,47 @@ async function handleImageGeneration(
       return;
     }
 
+    // Check for image attachments in the original message
+    let baseImage: File | undefined;
+    if (message.attachments.size > 0) {
+      try {
+        baseImage = await fetchImageFromAttachment(message.attachments.first()!);
+      } catch (_error) {
+        await message.reply({
+          content: 'Failed to process the attached image. Please try again.',
+          allowedMentions: { repliedUser: true },
+        });
+        return;
+      }
+    }
+
+    // If no image in original message but there's a reply, check the replied message for images
+    if (!baseImage && message.reference?.messageId) {
+      try {
+        const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+        const attachment = repliedTo.attachments.first();
+        if (attachment) {
+          baseImage = await fetchImageFromAttachment(attachment);
+        }
+      } catch (error) {
+        console.error('Error fetching image from replied message:', error);
+      }
+    }
+
     // Show a "generating" message
     const generatingMessage = await message.reply({
-      content: `🎨 Generating your image with ${serviceName}, please wait...`,
+      content: `🎨 ${baseImage ? 'Modifying' : 'Generating'} your image with ${serviceName}, please wait...`,
       allowedMentions: { repliedUser: true },
     });
 
     // Generate the image
-    const result = await generateImageFromService(prompt, service);
+    const result = await generateImageFromService(prompt, service, baseImage);
 
     if (result.success && Buffer.isBuffer(result.data)) {
       // Create an attachment from the buffer
       const attachment = new AttachmentBuilder(result.data, {
         name: `${service}-generated-image.png`,
-        description:
-          result.description ||
-          `Image generated from prompt: ${prompt}${service === 'gemini' ? ' (Google Gemini)' : ''}`,
+        description: `Image from prompt`,
       });
 
       // Update the message with only the generated image
@@ -81,7 +137,7 @@ async function handleImageGeneration(
       });
     } else {
       await generatingMessage.edit({
-        content: `Failed to generate image: ${result.data}`,
+        content: `Failed to ${baseImage ? 'modify' : 'generate'} image: ${result.data}`,
         allowedMentions: { repliedUser: true },
       });
     }
@@ -155,6 +211,16 @@ export async function main() {
     try {
       // Remove mention and trim the message
       let content = message.content.slice(botMention.length).trim();
+
+      // If content is empty and there's a reply, use the replied message content
+      if (!content && message.reference?.messageId) {
+        try {
+          const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+          content = repliedTo.content;
+        } catch (error) {
+          console.error('Error fetching replied message:', error);
+        }
+      }
 
       if (!content) {
         await message.reply({
@@ -255,6 +321,13 @@ export async function main() {
       if (content.slice(0, GIMG_COMMAND.length).toLowerCase().startsWith(GIMG_COMMAND)) {
         const imagePrompt = content.slice(GIMG_COMMAND.length).trim();
         await handleImageGeneration(message, imagePrompt, GIMG_COMMAND);
+        return;
+      }
+
+      // Check if message starts with Stability AI image generation command
+      if (content.slice(0, SIMG_COMMAND.length).toLowerCase().startsWith(SIMG_COMMAND)) {
+        const imagePrompt = content.slice(SIMG_COMMAND.length).trim();
+        await handleImageGeneration(message, imagePrompt, SIMG_COMMAND);
         return;
       }
 

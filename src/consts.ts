@@ -6,10 +6,10 @@ dotenv.config();
 // Environment variables
 export const DISCORD_TOKEN = process.env.DISCORD_TOKEN || '';
 export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
-export const DEEPSEEK_API_URL =
-  process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1';
+export const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1';
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+export const STABILITY_API_KEY = process.env.STABILITY_API_KEY;
 
 // Check for required environment variables
 if (!DISCORD_TOKEN) {
@@ -29,6 +29,7 @@ export const TEMP_COMMAND = '!temp';
 export const SYSTEM_COMMAND = '!system';
 export const IMG_COMMAND = '!img';
 export const GIMG_COMMAND = '!gimg';
+export const SIMG_COMMAND = '!simg';
 
 export const DEFAULT_MAX_TOKENS = 4096;
 export const MAX_ALLOWED_TOKENS = 8192;
@@ -37,5 +38,4 @@ export const DEFAULT_TEMPERATURE = 1.0;
 export const MAX_TEMPERATURE = 2.0;
 export const MIN_TEMPERATURE = 0.0;
 
-export const DEFAULT_SYSTEM_MESSAGE =
-  'You are a helpful assistant runnig as a discord bot.';
+export const DEFAULT_SYSTEM_MESSAGE = 'You are a helpful assistant runnig as a discord bot.';

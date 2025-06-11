@@ -13,12 +13,10 @@ function getOpenAIClient(): OpenAI {
   if (!openaiClientInstance) {
     // Get the API key from environment variables
     const apiKey = process.env.OPENAI_API_KEY;
-    
+
     // Check if the OPENAI_API_KEY is set
     if (!apiKey) {
-      throw new Error(
-        'OPENAI_API_KEY is not set in the environment variables.'
-      );
+      throw new Error('OPENAI_API_KEY is not set in the environment variables.');
     }
 
     // Initialize the OpenAI client and store it in the module-level variable
@@ -36,7 +34,7 @@ function getOpenAIClient(): OpenAI {
  * @param prompt - The text prompt to generate an image from
  * @returns An object containing the success status and either the image buffer or an error message
  */
-export async function generateImage(
+export async function generateDalleImage(
   prompt: string
 ): Promise<{ success: boolean; data: Buffer | string; url?: string }> {
   try {
@@ -45,12 +43,12 @@ export async function generateImage(
 
     // Generate the image using DALL-E 3
     const response = await openaiClient.images.generate({
-      model: "dall-e-3",
+      model: 'dall-e-3',
       prompt: prompt,
       n: 1, // Generate just one image
-      size: "1024x1024", // Standard size
-      quality: "standard",
-      response_format: "b64_json", // Get base64 encoded image
+      size: '1024x1024', // Standard size
+      quality: 'standard',
+      response_format: 'b64_json', // Get base64 encoded image
     });
 
     if (!response.data || response.data.length === 0) {
@@ -63,7 +61,7 @@ export async function generateImage(
     // Get the image data
     const imageData = response.data[0];
     const imageBase64 = imageData.b64_json;
-    
+
     if (!imageBase64) {
       return {
         success: false,
@@ -87,4 +85,4 @@ export async function generateImage(
       data: `Error generating image: ${error instanceof Error ? error.message : 'Unknown error'}`,
     };
   }
-} 
+}

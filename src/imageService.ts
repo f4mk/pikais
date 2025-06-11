@@ -1,5 +1,8 @@
-import { generateImage } from './dalleClient';
+import { generateDalleImage } from './dalleClient';
 import { generateGeminiImage } from './geminiClient';
+import { generateStabilityImage } from './stabilityClient';
+
+export type ImageGenerator = 'dalle' | 'gemini' | 'stability';
 
 /**
  * Interface for image generation result
@@ -11,33 +14,37 @@ export interface ImageGenerationResult {
 }
 
 /**
- * Handles image generation using the specified service
- * @param prompt The image generation prompt
- * @param service The service to use ('dalle' or 'gemini')
- * @returns Promise with the result containing success status and data
+ * Generates an image using the specified service
+ * @param prompt - The text prompt to generate an image from
+ * @param service - The service to use ('dalle' or 'gemini')
+ * @param baseImage - Optional base image to use for variations (only supported by DALL-E)
+ * @returns An object containing the success status and either the image buffer or an error message
  */
 export async function generateImageFromService(
   prompt: string,
-  service: 'dalle' | 'gemini'
+  service: 'dalle' | 'gemini' | 'stability',
+  baseImage?: File
 ): Promise<ImageGenerationResult> {
   try {
-    // Call the appropriate generation service
-    const result = service === 'dalle' 
-      ? await generateImage(prompt)
-      : await generateGeminiImage(prompt);
-
-    if (result.success && Buffer.isBuffer(result.data)) {
-      return {
-        success: true,
-        data: result.data,
-        description: `Image generated from prompt: ${prompt}${service === 'gemini' ? ' (Google Gemini)' : ''}`,
-      };
-    } else {
+    // If using Gemini and a base image is provided, return an error
+    if (service === 'gemini' && baseImage) {
       return {
         success: false,
-        data: typeof result.data === 'string' ? result.data : 'Failed to generate image',
+        data: 'Image modifications are not supported by Google Gemini. Please use DALL-E 3 instead.',
       };
     }
+
+    // Generate the image using the selected service
+    const result = await (service === 'dalle'
+      ? generateDalleImage(prompt)
+      : service === 'stability'
+        ? generateStabilityImage(prompt, baseImage)
+        : generateGeminiImage(prompt));
+
+    return {
+      ...result,
+      description: `Image ${baseImage ? 'modified' : 'generated'} using ${service === 'dalle' ? 'DALL-E 3' : 'Google Gemini'}`,
+    };
   } catch (error) {
     console.error(`Error in ${service} image generation:`, error);
     return {
@@ -45,4 +52,4 @@ export async function generateImageFromService(
       data: `Error generating image: ${error instanceof Error ? error.message : 'Unknown error'}`,
     };
   }
-} 
+}
