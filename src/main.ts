@@ -327,7 +327,7 @@ export async function main() {
       // Check if message starts with Stability AI image generation command
       if (content.slice(0, SIMG_COMMAND.length).toLowerCase().startsWith(SIMG_COMMAND)) {
         const imagePrompt = content.slice(SIMG_COMMAND.length).trim();
-        await handleImageGeneration(message, imagePrompt, GIMG_COMMAND);
+        await handleImageGeneration(message, imagePrompt, SIMG_COMMAND);
         return;
       }
 
