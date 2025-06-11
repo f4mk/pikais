@@ -76,7 +76,6 @@ export async function generateStabilityImage(
         cfg_scale: 7,
         steps: 30,
         samples: 1,
-        style_preset: 'photographic',
       };
 
       response = await fetch(
