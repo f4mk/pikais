@@ -3,6 +3,7 @@ import fetch from 'node-fetch';
 import sharp from 'sharp';
 
 import { STABILITY_API_KEY } from './consts';
+import { openaiClient } from './openaiClient';
 
 // Module-level variable to cache the client instance (singleton pattern)
 let stabilityClientInstance: {
@@ -114,6 +115,42 @@ async function pollVideoStatus(
 }
 
 /**
+ * Translates a prompt to English using OpenAI
+ * @param prompt - The prompt to translate
+ * @returns A promise that resolves to the translated prompt
+ */
+async function translatePrompt(prompt: string): Promise<string> {
+  try {
+    const completion = await openaiClient.chat.completions.create({
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a translator. Translate the following text to English. Keep the translation concise and natural. Only return the translated text, nothing else.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      model: 'deepseek-chat',
+      temperature: 0.3,
+    });
+
+    const translatedPrompt = completion.choices[0].message.content?.trim();
+    if (!translatedPrompt) {
+      throw new Error('Failed to translate prompt');
+    }
+
+    return translatedPrompt;
+  } catch (error) {
+    console.error('Error translating prompt:', error);
+    // If translation fails, return the original prompt
+    return prompt;
+  }
+}
+
+/**
  * Generates a video using Stability AI's API based on the provided image
  * @param data - Object containing the image buffer and content type
  * @returns An object containing the success status and either the video buffer or an error message
@@ -121,10 +158,14 @@ async function pollVideoStatus(
 export async function generateStabilityVideo(data: {
   buffer: Buffer;
   contentType: string;
+  prompt: string;
 }): Promise<{ success: boolean; data: Buffer | string }> {
   try {
     // Get the Stability AI client (reuses existing instance if available)
     const client = getStabilityClient();
+
+    // Translate the prompt to English
+    const translatedPrompt = await translatePrompt(data.prompt);
 
     // Resize the image to meet API requirements
     const resizedBuffer = await resizeImage(data.buffer);
@@ -137,10 +178,12 @@ export async function generateStabilityVideo(data: {
     });
 
     // Optional parameters with default values
-    formData.append('motion_bucket_id', '127'); // Controls the amount of motion (0-255)
+    formData.append('motion_bucket_id', '240'); // Controls the amount of motion (0-255)
     formData.append('cfg_scale', '2.5'); // Controls how closely the video follows the prompt
     formData.append('seed', '0'); // Random seed for reproducibility
     formData.append('steps', '25'); // Number of diffusion steps
+    formData.append('duration', '5');
+    formData.append('prompt', translatedPrompt);
 
     // Submit the image for video generation
     const response = await fetch(`${client.baseUrl}/v2beta/image-to-video`, {

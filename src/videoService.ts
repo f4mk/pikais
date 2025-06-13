@@ -17,6 +17,7 @@ export interface VideoGenerationResult {
 export async function generateVideoFromService(data: {
   buffer: Buffer;
   contentType: string;
+  prompt: string;
 }): Promise<VideoGenerationResult> {
   try {
     // Generate the video using Stability AI

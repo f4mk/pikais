@@ -142,6 +142,19 @@ async function handleImageGeneration(
 // Helper function to handle video generation
 async function handleVideoGeneration(message: Message): Promise<void> {
   try {
+    // Get the prompt from the command text
+    let prompt = message.content.slice(VIDEO_COMMAND.length).trim();
+
+    // If prompt is empty, try to get it from the replied message
+    if (!prompt && message.reference?.messageId) {
+      try {
+        const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+        prompt = repliedTo.content;
+      } catch (error) {
+        console.error('Error fetching replied message:', error);
+      }
+    }
+
     // Check for image attachments in the original message
     let data: { buffer: Buffer; contentType: string } | undefined;
     if (message.attachments.size > 0) {
@@ -186,7 +199,10 @@ async function handleVideoGeneration(message: Message): Promise<void> {
     });
 
     // Generate the video
-    const result = await generateVideoFromService(data);
+    const result = await generateVideoFromService({
+      ...data,
+      prompt,
+    });
 
     if (result.success && Buffer.isBuffer(result.data)) {
       // Create an attachment from the buffer
