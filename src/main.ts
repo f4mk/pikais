@@ -14,8 +14,8 @@ import {
   GIMG_COMMAND,
   IMG_COMMAND,
   MAX_MESSAGES,
-  SIMG_COMMAND,
   SYSTEM_COMMAND,
+  VIDEO_COMMAND,
 } from './consts';
 import {
   cleanupTimeouts,
@@ -25,33 +25,19 @@ import {
 } from './history';
 import { generateImageFromService } from './imageService';
 import { openaiClient } from './openaiClient';
-import { parseCommands, splitIntoChunks } from './utils';
-
-// Helper function to fetch image from attachment
-async function fetchImageFromAttachment(attachment: {
-  url: string;
-  contentType?: string | null;
-}): Promise<File | undefined> {
-  if (!attachment.contentType?.startsWith('image/')) {
-    return undefined;
-  }
-
-  try {
-    const response = await fetch(attachment.url);
-    if (!response.ok) throw new Error('Failed to fetch image');
-    const blob = await response.blob();
-    return new File([blob], 'image.png', { type: attachment.contentType });
-  } catch (error) {
-    console.error('Error fetching image attachment:', error);
-    throw error;
-  }
-}
+import {
+  fetchBufferFromAttachment,
+  fetchImageFromAttachment,
+  parseCommands,
+  splitIntoChunks,
+} from './utils';
+import { generateVideoFromService } from './videoService';
 
 // Helper function to handle image generation
 async function handleImageGeneration(
   message: Message,
   prompt: string,
-  command: typeof IMG_COMMAND | typeof GIMG_COMMAND | typeof SIMG_COMMAND
+  command: typeof IMG_COMMAND | typeof GIMG_COMMAND
 ): Promise<void> {
   try {
     let service: 'dalle' | 'gemini' | 'stability';
@@ -145,6 +131,86 @@ async function handleImageGeneration(
     console.error('Error in handleImageGeneration:', error);
     await message.reply({
       content: 'Sorry, something went wrong while generating your image.',
+      allowedMentions: { repliedUser: true },
+    });
+  } finally {
+    // Always remove the message from processing set
+    processingMessages.delete(message.id);
+  }
+}
+
+// Helper function to handle video generation
+async function handleVideoGeneration(message: Message): Promise<void> {
+  try {
+    // Check for image attachments in the original message
+    let data: { buffer: Buffer; contentType: string } | undefined;
+    if (message.attachments.size > 0) {
+      try {
+        data = await fetchBufferFromAttachment(message.attachments.first()!);
+      } catch (_error) {
+        await message.reply({
+          content: 'Failed to process the attached image. Please try again.',
+          allowedMentions: { repliedUser: true },
+        });
+        return;
+      }
+    }
+
+    // If no image in original message but there's a reply, check the replied message for images
+    if (!data && message.reference?.messageId) {
+      try {
+        const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+        const attachment = repliedTo.attachments.first();
+        if (attachment) {
+          data = await fetchBufferFromAttachment(attachment);
+        }
+      } catch (error) {
+        console.error('Error fetching image from replied message:', error);
+      }
+    }
+
+    // Return early if no base image is provided
+    if (!data) {
+      await message.reply({
+        content:
+          'Please provide an image to generate a video from. You can either attach an image or reply to a message containing an image.',
+        allowedMentions: { repliedUser: true },
+      });
+      return;
+    }
+
+    // Show a "generating" message
+    const generatingMessage = await message.reply({
+      content: '🎬 Generating your video with Stability AI, please wait...',
+      allowedMentions: { repliedUser: true },
+    });
+
+    // Generate the video
+    const result = await generateVideoFromService(data);
+
+    if (result.success && Buffer.isBuffer(result.data)) {
+      // Create an attachment from the buffer
+      const attachment = new AttachmentBuilder(result.data, {
+        name: 'stability-generated-video.mp4',
+        description: 'Video from prompt',
+      });
+
+      // Update the message with only the generated video
+      await generatingMessage.edit({
+        content: '',
+        files: [attachment],
+        allowedMentions: { repliedUser: true },
+      });
+    } else {
+      await generatingMessage.edit({
+        content: `Failed to generate video: ${result.data}`,
+        allowedMentions: { repliedUser: true },
+      });
+    }
+  } catch (error) {
+    console.error('Error in handleVideoGeneration:', error);
+    await message.reply({
+      content: 'Sorry, something went wrong while generating your video.',
       allowedMentions: { repliedUser: true },
     });
   } finally {
@@ -324,10 +390,9 @@ export async function main() {
         return;
       }
 
-      // Check if message starts with Stability AI image generation command
-      if (content.slice(0, SIMG_COMMAND.length).toLowerCase().startsWith(SIMG_COMMAND)) {
-        const imagePrompt = content.slice(SIMG_COMMAND.length).trim();
-        await handleImageGeneration(message, imagePrompt, SIMG_COMMAND);
+      // Check if message starts with video generation command
+      if (content.slice(0, VIDEO_COMMAND.length).toLowerCase().startsWith(VIDEO_COMMAND)) {
+        await handleVideoGeneration(message);
         return;
       }
 

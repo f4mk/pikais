@@ -1,3 +1,5 @@
+import { Readable } from 'stream';
+
 import {
   DEFAULT_MAX_TOKENS,
   DEFAULT_TEMPERATURE,
@@ -8,10 +10,7 @@ import {
 } from './consts';
 
 // Function to split text into chunks of maximum size
-export const splitIntoChunks = (
-  text: string,
-  maxLength: number = 1500
-): string[] => {
+export const splitIntoChunks = (text: string, maxLength: number = 1500): string[] => {
   if (!text) return [];
 
   const chunks: string[] = [];
@@ -34,9 +33,7 @@ export const splitIntoChunks = (
         const words = line.split(' ');
         for (const word of words) {
           // If adding this word would exceed maxLength
-          if (
-            (currentChunk + (currentChunk ? ' ' : '') + word).length > maxLength
-          ) {
+          if ((currentChunk + (currentChunk ? ' ' : '') + word).length > maxLength) {
             // Save current chunk if not empty
             if (currentChunk) {
               chunks.push(currentChunk.trim());
@@ -82,11 +79,7 @@ export const parseCommandsIntoObject = (
       cursor++; // skip !
 
       // Read rest of command name
-      while (
-        cursor < content.length &&
-        content[cursor] !== '=' &&
-        content[cursor] !== ' '
-      ) {
+      while (cursor < content.length && content[cursor] !== '=' && content[cursor] !== ' ') {
         commandName += content[cursor];
         cursor++;
       }
@@ -95,11 +88,7 @@ export const parseCommandsIntoObject = (
       if (cursor < content.length && content[cursor] === '=') {
         cursor++; // skip =
         let value = '';
-        while (
-          cursor < content.length &&
-          content[cursor] !== ' ' &&
-          content[cursor] !== '!'
-        ) {
+        while (cursor < content.length && content[cursor] !== ' ' && content[cursor] !== '!') {
           value += content[cursor];
           cursor++;
         }
@@ -137,10 +126,7 @@ export const parseCommands = (
   // Parse values with proper validation using command constants as keys
   const maxTokens = commands[TOKENS_COMMAND]
     ? Math.min(
-        Math.max(
-          MIN_ALLOWED_TOKENS,
-          parseInt(commands[TOKENS_COMMAND]) || DEFAULT_MAX_TOKENS
-        ),
+        Math.max(MIN_ALLOWED_TOKENS, parseInt(commands[TOKENS_COMMAND]) || DEFAULT_MAX_TOKENS),
         8192
       )
     : DEFAULT_MAX_TOKENS;
@@ -150,10 +136,7 @@ export const parseCommands = (
     : DEFAULT_TEMPERATURE;
   const temperature = commands[TEMP_COMMAND]
     ? Math.min(
-        Math.max(
-          MIN_TEMPERATURE,
-          Number.isNaN(parsedTemp) ? DEFAULT_TEMPERATURE : parsedTemp
-        ),
+        Math.max(MIN_TEMPERATURE, Number.isNaN(parsedTemp) ? DEFAULT_TEMPERATURE : parsedTemp),
         2
       )
     : DEFAULT_TEMPERATURE;
@@ -164,3 +147,77 @@ export const parseCommands = (
     temperature,
   };
 };
+
+export async function fetchImageFromAttachment(attachment: {
+  url: string;
+  contentType?: string | null;
+}): Promise<File> {
+  if (!attachment.contentType?.startsWith('image/')) {
+    throw new Error('Attachment is not an image');
+  }
+
+  try {
+    const response = await fetch(attachment.url);
+    if (!response.ok) throw new Error('Failed to fetch image');
+    const blob = await response.blob();
+    return new File([blob], 'image.png', { type: attachment.contentType });
+  } catch (error) {
+    console.error('Error fetching image attachment:', error);
+    throw error;
+  }
+}
+
+function bufferToStream(buffer: Buffer): Readable {
+  const stream = new Readable();
+  stream.push(buffer);
+  stream.push(null);
+  return stream;
+}
+
+export async function fetchReadableFromAttachment(attachment: {
+  url: string;
+  contentType?: string | null;
+}): Promise<{ stream: Readable; contentType: string }> {
+  if (!attachment.contentType?.startsWith('image/')) {
+    throw new Error('Attachment is not an image');
+  }
+
+  try {
+    const response = await fetch(attachment.url);
+    if (!response.ok) throw new Error('Failed to fetch image');
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    return {
+      stream: bufferToStream(buffer),
+      contentType: attachment.contentType,
+    };
+  } catch (error) {
+    console.error('Error fetching image attachment:', error);
+    throw error;
+  }
+}
+
+export async function fetchBufferFromAttachment(attachment: {
+  url: string;
+  contentType?: string | null;
+}): Promise<{ buffer: Buffer; contentType: string }> {
+  if (!attachment.contentType?.startsWith('image/')) {
+    throw new Error('Attachment is not an image');
+  }
+
+  try {
+    const response = await fetch(attachment.url);
+    if (!response.ok) throw new Error('Failed to fetch image');
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    return {
+      buffer,
+      contentType: attachment.contentType,
+    };
+  } catch (error) {
+    console.error('Error fetching image attachment:', error);
+    throw error;
+  }
+}
