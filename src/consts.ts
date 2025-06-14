@@ -4,11 +4,11 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 // Environment variables
-export const DISCORD_TOKEN = process.env.DISCORD_TOKEN || '';
-export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
-export const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1';
-export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+export const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+export const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+export const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL;
+export const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 export const STABILITY_API_KEY = process.env.STABILITY_API_KEY;
 
 // Check for required environment variables
@@ -20,6 +20,21 @@ if (!DEEPSEEK_API_KEY) {
   throw new Error('DEEPSEEK_API_KEY is required');
 }
 
+if (!DEEPSEEK_API_URL) {
+  throw new Error('DEEPSEEK_API_URL is required');
+}
+
+if (!GEMINI_API_KEY) {
+  throw new Error('GEMINI_API_KEY is required');
+}
+
+if (!OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY is required');
+}
+
+if (!STABILITY_API_KEY) {
+  throw new Error('STABILITY_API_KEY is required');
+}
 // Constants
 export const MAX_MESSAGES = 20;
 export const CONVERSATION_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds

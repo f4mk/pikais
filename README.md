@@ -71,9 +71,23 @@ A Discord bot that integrates with various AI services for text, image, and vide
 
 Required environment variables:
 
-- `DISCORD_TOKEN` - Your Discord bot token
-- `DEEPSEEK_API_KEY` - Your Deepseek API key
-- `STABILITY_API_KEY` - Your Stability AI API key (for image editing and video generation)
+- `DISCORD_TOKEN` - Your Discord bot token from [Discord Developer Portal](https://discord.com/developers/applications)
+- `DEEPSEEK_API_KEY` - Your Deepseek API key for text generation
+- `DEEPSEEK_API_URL` - Deepseek API endpoint URL (default: https://api.deepseek.com/v1)
+- `OPENAI_API_KEY` - Your OpenAI API key for DALL-E 3 image generation
+- `GEMINI_API_KEY` - Your Google Gemini API key for image generation
+- `STABILITY_API_KEY` - Your Stability AI API key for image editing and video generation
+
+Create a `.env` file in the root directory with these variables:
+
+```env
+DISCORD_TOKEN=your_discord_bot_token_here
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+DEEPSEEK_API_URL=https://api.deepseek.com/v1
+OPENAI_API_KEY=your_openai_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+STABILITY_API_KEY=your_stability_api_key_here
+```
 
 ## Development
 
