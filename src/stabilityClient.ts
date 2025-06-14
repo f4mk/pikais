@@ -53,6 +53,7 @@ export async function generateStabilityImage(
 
     // Translate the prompt to English if OpenAI client is provided
     const translatedPrompt = openaiClient ? await translatePrompt(openaiClient, prompt) : prompt;
+    console.log('Translated prompt:', translatedPrompt);
 
     let response;
     if (baseImage) {
@@ -65,6 +66,7 @@ export async function generateStabilityImage(
       const subject = openaiClient
         ? await extractSubjectFromPrompt(openaiClient, translatedPrompt)
         : translatedPrompt;
+      console.log('Extracted subject for search:', subject);
 
       // Image-to-image generation using search-and-replace
       const formData = new FormData();
@@ -89,6 +91,9 @@ export async function generateStabilityImage(
         },
         body: formData,
       });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
     } else {
       // Text-to-image generation
       const requestBody = {
@@ -134,7 +139,7 @@ export async function generateStabilityImage(
     const result = await response.json();
 
     if (!result.image) {
-      console.error('No image in response:', result);
+      console.error('No image in response. Full response:', result);
       return {
         success: false,
         data: `Failed to ${baseImage ? 'modify' : 'generate'} image. No image was returned from the API.`,
@@ -150,6 +155,9 @@ export async function generateStabilityImage(
     };
   } catch (error) {
     console.error('Error generating image:', error);
+    if (error instanceof Error) {
+      console.error('Error stack:', error.stack);
+    }
     return {
       success: false,
       data: `Error generating image: ${error instanceof Error ? error.message : 'Unknown error'}`,
