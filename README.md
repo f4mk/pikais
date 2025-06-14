@@ -1,131 +1,85 @@
-# Discord Deepseek Bot
+# Discord Bot with AI Capabilities
 
-A Discord bot that integrates with the Deepseek API to process messages and generate responses.
-
-## Setup
-
-1. Clone this repository
-2. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-3. Create a `.env` file in the root directory with the following variables:
-
-   ```
-   DISCORD_TOKEN=your_discord_bot_token_here
-   DEEPSEEK_API_KEY=your_deepseek_api_key_here
-   DEEPSEEK_API_URL=https://api.deepseek.com/v1
-   ```
-
-4. Replace the placeholder values in `.env` with your actual tokens:
-   - Get your Discord bot token from the [Discord Developer Portal](https://discord.com/developers/applications)
-   - Get your Deepseek API key from your Deepseek account
-
-## Running the Bot
-
-Development mode (with hot reload):
-
-```bash
-npm run dev
-```
-
-Production mode:
-
-```bash
-npm run build
-npm start
-```
-
-## Usage
-
-1. Invite the bot to your Discord server
-2. Mention the bot (@BotName) in any channel it has access to
-3. The bot will process your message through the Deepseek API and reply with the response
-
-## Commands
-
-The bot supports several commands that can be used to customize its behavior. All commands should be placed at the beginning of your message after mentioning the bot.
-
-### System Command
-
-**Syntax**: `!system [your system prompt]`
-
-**Description**: Sets a custom system message for the AI model, which guides how the AI responds to your queries. This affects all future interactions until cleared or reset.
-
-**Example**:
-
-```
-@BotName !system You are a helpful assistant that specializes in TypeScript programming.
-```
-
-### Clear Command
-
-**Syntax**: `!clear [optional new message]`
-
-**Description**: Clears the conversation history and resets the system message to the default. If you include text after `!clear`, it will be treated as a new message.
-
-**Example**:
-
-```
-@BotName !clear
-```
-
-or
-
-```
-@BotName !clear What is TypeScript?
-```
-
-### Tokens Command
-
-**Syntax**: `!tokens=[number]`
-
-**Description**: Sets the maximum number of tokens (roughly words) the AI can use in its response. Valid range is 1-8192, with a default of 4096.
-
-**Example**:
-
-```
-@BotName !tokens=2000 Write a short story about a robot.
-```
-
-### Temperature Command
-
-**Syntax**: `!temp=[number]`
-
-**Description**: Controls the creativity/randomness of the AI's responses. Lower values (e.g., 0.2) make responses more focused and deterministic, while higher values (e.g., 1.8) make them more creative and diverse. Valid range is 0-2, with a default of 1.0.
-
-**Example**:
-
-```
-@BotName !temp=1.8 Generate a creative poem about technology.
-```
-
-### Combined Commands
-
-You can combine multiple commands at the beginning of your message:
-
-**Example**:
-
-```
-@BotName !tokens=3000 !temp=0.7 Explain quantum computing.
-```
-
-## Notes on Command Usage
-
-- Commands must be at the beginning of your message after mentioning the bot
-- Commands are processed in the order they appear
-- System prompt changes persist across conversations until explicitly cleared or until the conversation times out (2 hours of inactivity)
-- Command parameters (!tokens, !temp) are applied only to the current message
-- If a command value is invalid, the bot will use the default value instead
+A Discord bot that integrates with various AI services for text, image, and video generation.
 
 ## Features
 
-- Processes messages that mention the bot
-- Integrates with Deepseek API
-- Customizable system prompts for specialized AI behavior
-- Adjustable response parameters (tokens, temperature)
-- Conversation history management
-- Error handling and user-friendly responses
-- TypeScript support
+- **Text Generation**: Powered by Deepseek API
+- **Image Generation**:
+  - DALL-E 3 via `!img` command
+  - Google Gemini via `!gimg` command
+  - Image editing via Stability AI via `!edit` command
+- **Video Generation**: Stability AI video generation via `!video` command
+- **Conversation Management**: Maintains context and allows system prompt customization
+- **Response Control**: Adjustable tokens and temperature for text generation
+
+## Commands
+
+### Basic Commands
+
+- `!help` - Shows all available commands and usage instructions
+- `!clear` - Clears conversation history and resets system prompt
+- `!system [prompt]` - Sets a custom system prompt for the AI (only affects text generation)
+
+### Image Generation
+
+- `!img [prompt]` - Generate an image using DALL-E 3
+  - Prompt can be in the message or in a replied message
+- `!gimg [prompt]` - Generate an image using Google Gemini
+  - Prompt can be in the message or in a replied message
+- `!edit [prompt]` - Edit an image using Stability AI
+  - Requires image attachment or reply to a message containing an image
+
+### Video Generation
+
+- `!video [prompt]` - Generate a video using Stability AI
+  - Requires image attachment or reply to a message containing an image
+  - Prompt can be in the message or in a replied message
+
+### Response Control (only affects text generation)
+
+- `!tokens=[number]` - Set maximum tokens (1-8192, default: 4096)
+- `!temp=[number]` - Set temperature (0-2, default: 1.0)
+
+## Usage Examples
+
+```
+@BotName !img a cute cat playing with yarn
+@BotName !system You are a helpful coding assistant
+@BotName !tokens=2000 !temp=0.7 Explain quantum computing
+```
+
+## Code Structure
+
+- `src/main.ts` - Main bot setup and message handling
+- `src/utils.ts` - Utility functions for message processing and command handling
+- `src/consts.ts` - Constants and configuration
+- `src/history.ts` - Conversation history management
+- `src/imageService.ts` - Image generation service integration
+- `src/videoService.ts` - Video generation service integration
+- `src/openaiClient.ts` - Deepseek API client setup
+
+## Notes
+
+- Commands must be at the start of your message after mentioning the bot
+- You can combine multiple commands (e.g., !tokens and !temp)
+- System prompt changes persist until cleared or timeout (2 hours)
+- For image/video generation, you can either attach an image or reply to a message containing an image
+- Response control commands (!tokens, !temp) and system prompt only affect text generation
+
+## Environment Variables
+
+Required environment variables:
+
+- `DISCORD_TOKEN` - Your Discord bot token
+- `DEEPSEEK_API_KEY` - Your Deepseek API key
+- `STABILITY_API_KEY` - Your Stability AI API key (for image editing and video generation)
+
+## Development
+
+The bot is written in TypeScript and uses:
+
+- discord.js for Discord API interaction
+- Deepseek API for text generation
+- DALL-E 3 and Google Gemini for image generation
+- Stability AI for image editing and video generation

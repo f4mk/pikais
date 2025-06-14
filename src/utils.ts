@@ -1,3 +1,4 @@
+import { AttachmentBuilder, Message } from 'discord.js';
 import { OpenAI } from 'openai';
 import sharp from 'sharp';
 import { Readable } from 'stream';
@@ -5,11 +6,18 @@ import { Readable } from 'stream';
 import {
   DEFAULT_MAX_TOKENS,
   DEFAULT_TEMPERATURE,
+  EDIT_COMMAND,
+  GIMG_COMMAND,
+  HELP_TEXT,
+  IMG_COMMAND,
   MIN_ALLOWED_TOKENS,
   MIN_TEMPERATURE,
   TEMP_COMMAND,
   TOKENS_COMMAND,
+  VIDEO_COMMAND,
 } from './consts';
+import { generateImageFromService } from './imageService';
+import { generateVideoFromService } from './videoService';
 
 // Function to split text into chunks of maximum size
 export const splitIntoChunks = (text: string, maxLength: number = 1500): string[] => {
@@ -337,4 +345,157 @@ export async function resizeImage(buffer: Buffer): Promise<Buffer> {
       position: 'center',
     })
     .toBuffer();
+}
+
+// Helper function to handle help command
+export async function handleHelpCommand(message: Message): Promise<void> {
+  await message.reply({
+    content: HELP_TEXT,
+    allowedMentions: { repliedUser: true },
+  });
+}
+
+// Helper function to handle image generation
+export async function handleImageGeneration(
+  message: Message,
+  prompt: string,
+  command: typeof IMG_COMMAND | typeof GIMG_COMMAND | typeof EDIT_COMMAND
+): Promise<void> {
+  let service: 'dalle' | 'gemini' | 'stability' = 'dalle';
+  let serviceName = 'DALL-E 3';
+  if (command === GIMG_COMMAND) {
+    service = 'gemini';
+    serviceName = 'Google Gemini';
+  } else if (command === EDIT_COMMAND) {
+    service = 'stability';
+    serviceName = 'Stability AI';
+  }
+
+  // If prompt is empty, try to get it from the replied message
+  if (!prompt && message.reference?.messageId) {
+    const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+    prompt = repliedTo.content;
+  }
+
+  // Return early if still no prompt
+  if (!prompt) {
+    await message.reply({
+      content: `Please provide a description of the image you want to generate after the !${command} command.`,
+      allowedMentions: { repliedUser: true },
+    });
+    return;
+  }
+
+  // Check for image attachments in the original message
+  let baseImage: File | undefined;
+  if (message.attachments.size > 0) {
+    baseImage = await fetchImageFromAttachment(message.attachments.first()!);
+  }
+
+  // If no image in original message but there's a reply, check the replied message for images
+  if (!baseImage && message.reference?.messageId) {
+    const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+    const attachment = repliedTo.attachments.first();
+    if (attachment) {
+      baseImage = await fetchImageFromAttachment(attachment);
+    }
+  }
+
+  // Show a "generating" message
+  const generatingMessage = await message.reply({
+    content: `🎨 ${baseImage ? 'Modifying' : 'Generating'} your image with ${serviceName}, please wait...`,
+    allowedMentions: { repliedUser: true },
+  });
+
+  // Generate the image
+  const result = await generateImageFromService(prompt, service, baseImage);
+
+  if (result.success && Buffer.isBuffer(result.data)) {
+    // Create an attachment from the buffer
+    const attachment = new AttachmentBuilder(result.data, {
+      name: `${service}-generated-image.png`,
+      description: `Image from prompt`,
+    });
+
+    // Update the message with only the generated image
+    await generatingMessage.edit({
+      content: '',
+      files: [attachment],
+      allowedMentions: { repliedUser: true },
+    });
+  } else {
+    await generatingMessage.edit({
+      content: `Failed to ${baseImage ? 'modify' : 'generate'} image: ${result.data}`,
+      allowedMentions: { repliedUser: true },
+    });
+  }
+}
+
+// Helper function to handle video generation
+export async function handleVideoGeneration(message: Message): Promise<void> {
+  // Get the prompt from the command text
+  let prompt = message.content.slice(VIDEO_COMMAND.length).trim();
+
+  // If prompt is empty, try to get it from the replied message
+  if (!prompt && message.reference?.messageId) {
+    const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+    prompt = repliedTo.content;
+  }
+
+  // Check for image attachments in the original message
+  let data: { buffer: Buffer; contentType: string } | undefined;
+  if (message.attachments.size > 0) {
+    data = await fetchBufferFromAttachment(message.attachments.first()!);
+  }
+
+  // If no image in original message but there's a reply, check the replied message for images
+  if (!data && message.reference?.messageId) {
+    const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+    const attachment = repliedTo.attachments.first();
+    if (attachment) {
+      data = await fetchBufferFromAttachment(attachment);
+    }
+  }
+
+  // Return early if no base image is provided
+  if (!data) {
+    await message.reply({
+      content:
+        'Please provide an image to generate a video from. You can either attach an image or reply to a message containing an image.',
+      allowedMentions: { repliedUser: true },
+    });
+    return;
+  }
+
+  // Show a "generating" message
+  const generatingMessage = await message.reply({
+    content: '🎬 Generating your video with Stability AI, please wait...',
+    allowedMentions: { repliedUser: true },
+  });
+
+  // Generate the video
+  const result = await generateVideoFromService({
+    ...data,
+    prompt,
+  });
+
+  if (result.success && Buffer.isBuffer(result.data)) {
+    // Create an attachment from the buffer
+    const attachment = new AttachmentBuilder(result.data, {
+      name: 'stability-generated-video.mp4',
+      description: 'Video from prompt',
+    });
+
+    // Update the message with only the generated video
+    await generatingMessage.edit({
+      content: '',
+      files: [attachment],
+      allowedMentions: { repliedUser: true },
+    });
+  } else {
+    await generatingMessage.edit({
+      content: `Failed to generate video: ${result.data}`,
+      allowedMentions: { repliedUser: true },
+    });
+  }
 }

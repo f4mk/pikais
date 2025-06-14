@@ -31,6 +31,38 @@ export const IMG_COMMAND = '!img';
 export const GIMG_COMMAND = '!gimg';
 export const EDIT_COMMAND = '!edit';
 export const VIDEO_COMMAND = '!video';
+export const HELP_COMMAND = '!help';
+
+export const HELP_TEXT = `🤖 **Available Commands**
+
+**Basic Commands:**
+\`!help\` - Shows this help message
+\`!clear\` - Clears conversation history and resets system prompt
+\`!system [prompt]\` - Sets a custom system prompt for the AI (only affects text generation)
+
+**Image Generation:**
+\`!img [prompt]\` - Generate an image using DALL-E 3 (prompt can be in message or replied message)
+\`!gimg [prompt]\` - Generate an image using Google Gemini (prompt can be in message or replied message)
+\`!edit [prompt]\` - Edit an image using Stability AI (requires image attachment or reply to image)
+
+**Video Generation:**
+\`!video [prompt]\` - Generate a video using Stability AI (requires image attachment or reply to image)
+
+**Response Control (only affects text generation):**
+\`!tokens=[number]\` - Set max tokens (1-8192, default: 4096)
+\`!temp=[number]\` - Set temperature (0-2, default: 1.0)
+
+**Usage Examples:**
+• \`@BotName !img a cute cat playing with yarn\`
+• \`@BotName !system You are a helpful coding assistant\`
+• \`@BotName !tokens=2000 !temp=0.7 Explain quantum computing\`
+
+**Notes:**
+• Commands must be at the start of your message after mentioning the bot
+• You can combine multiple commands (e.g., !tokens and !temp)
+• System prompt changes persist until cleared or timeout (2 hours)
+• For image/video generation, you can either attach an image or reply to a message containing an image
+• Response control commands (!tokens, !temp) and system prompt only affect text generation`;
 
 export const DEFAULT_MAX_TOKENS = 4096;
 export const MAX_ALLOWED_TOKENS = 8192;

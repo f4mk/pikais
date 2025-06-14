@@ -1,11 +1,4 @@
-import {
-  AttachmentBuilder,
-  Client,
-  Events,
-  GatewayIntentBits,
-  Message,
-  TextChannel,
-} from 'discord.js';
+import { Client, Events, GatewayIntentBits, Message, TextChannel } from 'discord.js';
 
 import {
   CLEAR_COMMAND,
@@ -13,6 +6,7 @@ import {
   DISCORD_TOKEN,
   EDIT_COMMAND,
   GIMG_COMMAND,
+  HELP_COMMAND,
   IMG_COMMAND,
   MAX_MESSAGES,
   SYSTEM_COMMAND,
@@ -24,214 +18,14 @@ import {
   conversationTimeouts,
   getConversationHistory,
 } from './history';
-import { generateImageFromService } from './imageService';
 import { openaiClient } from './openaiClient';
 import {
-  fetchBufferFromAttachment,
-  fetchImageFromAttachment,
+  handleHelpCommand,
+  handleImageGeneration,
+  handleVideoGeneration,
   parseCommands,
   splitIntoChunks,
 } from './utils';
-import { generateVideoFromService } from './videoService';
-
-// Helper function to handle image generation
-async function handleImageGeneration(
-  message: Message,
-  prompt: string,
-  command: typeof IMG_COMMAND | typeof GIMG_COMMAND | typeof EDIT_COMMAND
-): Promise<void> {
-  try {
-    let service: 'dalle' | 'gemini' | 'stability' = 'dalle';
-    let serviceName = 'DALL-E 3';
-    if (command === GIMG_COMMAND) {
-      service = 'gemini';
-      serviceName = 'Google Gemini';
-    } else if (command === EDIT_COMMAND) {
-      service = 'stability';
-      serviceName = 'Stability AI';
-    }
-
-    // If prompt is empty, try to get it from the replied message
-    if (!prompt && message.reference?.messageId) {
-      try {
-        const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
-        prompt = repliedTo.content;
-      } catch (error) {
-        console.error('Error fetching replied message:', error);
-      }
-    }
-
-    // Return early if still no prompt
-    if (!prompt) {
-      await message.reply({
-        content: `Please provide a description of the image you want to generate after the !${command} command.`,
-        allowedMentions: { repliedUser: true },
-      });
-      return;
-    }
-
-    // Check for image attachments in the original message
-    let baseImage: File | undefined;
-    if (message.attachments.size > 0) {
-      try {
-        baseImage = await fetchImageFromAttachment(message.attachments.first()!);
-      } catch (_error) {
-        await message.reply({
-          content: 'Failed to process the attached image. Please try again.',
-          allowedMentions: { repliedUser: true },
-        });
-        return;
-      }
-    }
-
-    // If no image in original message but there's a reply, check the replied message for images
-    if (!baseImage && message.reference?.messageId) {
-      try {
-        const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
-        const attachment = repliedTo.attachments.first();
-        if (attachment) {
-          baseImage = await fetchImageFromAttachment(attachment);
-        }
-      } catch (error) {
-        console.error('Error fetching image from replied message:', error);
-      }
-    }
-
-    // Show a "generating" message
-    const generatingMessage = await message.reply({
-      content: `🎨 ${baseImage ? 'Modifying' : 'Generating'} your image with ${serviceName}, please wait...`,
-      allowedMentions: { repliedUser: true },
-    });
-
-    // Generate the image
-    const result = await generateImageFromService(prompt, service, baseImage);
-
-    if (result.success && Buffer.isBuffer(result.data)) {
-      // Create an attachment from the buffer
-      const attachment = new AttachmentBuilder(result.data, {
-        name: `${service}-generated-image.png`,
-        description: `Image from prompt`,
-      });
-
-      // Update the message with only the generated image
-      await generatingMessage.edit({
-        content: '',
-        files: [attachment],
-        allowedMentions: { repliedUser: true },
-      });
-    } else {
-      await generatingMessage.edit({
-        content: `Failed to ${baseImage ? 'modify' : 'generate'} image: ${result.data}`,
-        allowedMentions: { repliedUser: true },
-      });
-    }
-  } catch (error) {
-    console.error('Error in handleImageGeneration:', error);
-    await message.reply({
-      content: 'Sorry, something went wrong while generating your image.',
-      allowedMentions: { repliedUser: true },
-    });
-  } finally {
-    // Always remove the message from processing set
-    processingMessages.delete(message.id);
-  }
-}
-
-// Helper function to handle video generation
-async function handleVideoGeneration(message: Message): Promise<void> {
-  try {
-    // Get the prompt from the command text
-    let prompt = message.content.slice(VIDEO_COMMAND.length).trim();
-
-    // If prompt is empty, try to get it from the replied message
-    if (!prompt && message.reference?.messageId) {
-      try {
-        const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
-        prompt = repliedTo.content;
-      } catch (error) {
-        console.error('Error fetching replied message:', error);
-      }
-    }
-
-    // Check for image attachments in the original message
-    let data: { buffer: Buffer; contentType: string } | undefined;
-    if (message.attachments.size > 0) {
-      try {
-        data = await fetchBufferFromAttachment(message.attachments.first()!);
-      } catch (_error) {
-        await message.reply({
-          content: 'Failed to process the attached image. Please try again.',
-          allowedMentions: { repliedUser: true },
-        });
-        return;
-      }
-    }
-
-    // If no image in original message but there's a reply, check the replied message for images
-    if (!data && message.reference?.messageId) {
-      try {
-        const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
-        const attachment = repliedTo.attachments.first();
-        if (attachment) {
-          data = await fetchBufferFromAttachment(attachment);
-        }
-      } catch (error) {
-        console.error('Error fetching image from replied message:', error);
-      }
-    }
-
-    // Return early if no base image is provided
-    if (!data) {
-      await message.reply({
-        content:
-          'Please provide an image to generate a video from. You can either attach an image or reply to a message containing an image.',
-        allowedMentions: { repliedUser: true },
-      });
-      return;
-    }
-
-    // Show a "generating" message
-    const generatingMessage = await message.reply({
-      content: '🎬 Generating your video with Stability AI, please wait...',
-      allowedMentions: { repliedUser: true },
-    });
-
-    // Generate the video
-    const result = await generateVideoFromService({
-      ...data,
-      prompt,
-    });
-
-    if (result.success && Buffer.isBuffer(result.data)) {
-      // Create an attachment from the buffer
-      const attachment = new AttachmentBuilder(result.data, {
-        name: 'stability-generated-video.mp4',
-        description: 'Video from prompt',
-      });
-
-      // Update the message with only the generated video
-      await generatingMessage.edit({
-        content: '',
-        files: [attachment],
-        allowedMentions: { repliedUser: true },
-      });
-    } else {
-      await generatingMessage.edit({
-        content: `Failed to generate video: ${result.data}`,
-        allowedMentions: { repliedUser: true },
-      });
-    }
-  } catch (error) {
-    console.error('Error in handleVideoGeneration:', error);
-    await message.reply({
-      content: 'Sorry, something went wrong while generating your video.',
-      allowedMentions: { repliedUser: true },
-    });
-  } finally {
-    // Always remove the message from processing set
-    processingMessages.delete(message.id);
-  }
-}
 
 // Global instance check
 let isInstanceRunning = false;
@@ -294,12 +88,8 @@ export async function main() {
 
       // If content is empty and there's a reply, use the replied message content
       if (!content && message.reference?.messageId) {
-        try {
-          const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
-          content = repliedTo.content;
-        } catch (error) {
-          console.error('Error fetching replied message:', error);
-        }
+        const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+        content = repliedTo.content;
       }
 
       if (!content) {
@@ -315,17 +105,12 @@ export async function main() {
 
       // If this is a reply to another message, add that message's content to history
       if (message.reference && message.reference.messageId) {
-        try {
-          const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
-          // Add the replied-to message as context
-          messages.push({
-            role: 'user',
-            content: `Previous message: ${repliedTo.content}`,
-          });
-        } catch (error) {
-          console.error('Error fetching replied message:', error);
-          // Continue without the context if we can't fetch it
-        }
+        const repliedTo = await message.channel.messages.fetch(message.reference.messageId);
+        // Add the replied-to message as context
+        messages.push({
+          role: 'user',
+          content: `Previous message: ${repliedTo.content}`,
+        });
       }
 
       // Check if message starts with system command
@@ -417,6 +202,12 @@ export async function main() {
         return;
       }
 
+      // Check if message starts with help command
+      if (content.slice(0, HELP_COMMAND.length).toLowerCase().startsWith(HELP_COMMAND)) {
+        await handleHelpCommand(message);
+        return;
+      }
+
       // Parse commands and return settings and content
       const { content: updatedContent, maxTokens, temperature } = parseCommands(content);
 
@@ -503,7 +294,10 @@ export async function main() {
     } catch (error) {
       console.error(`Error in message processing for message ${message.id}:`, error);
       await message.reply({
-        content: 'Sorry, something went wrong while processing your request.',
+        content:
+          error instanceof Error
+            ? error.message
+            : 'Sorry, something went wrong while processing your request.',
         allowedMentions: { repliedUser: true },
       });
     } finally {
