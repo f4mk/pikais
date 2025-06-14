@@ -53,7 +53,6 @@ export async function generateStabilityImage(
 
     // Translate the prompt to English if OpenAI client is provided
     const translatedPrompt = openaiClient ? await translatePrompt(openaiClient, prompt) : prompt;
-    console.log('Translated prompt:', translatedPrompt);
 
     let response;
     if (baseImage) {
@@ -66,7 +65,6 @@ export async function generateStabilityImage(
       const subject = openaiClient
         ? await extractSubjectFromPrompt(openaiClient, translatedPrompt)
         : translatedPrompt;
-      console.log('Extracted subject for search:', subject);
 
       // Image-to-image generation using search-and-replace
       const formData = new FormData();
@@ -91,9 +89,6 @@ export async function generateStabilityImage(
         },
         body: formData,
       });
-
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
     } else {
       // Text-to-image generation
       const requestBody = {
