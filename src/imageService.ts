@@ -1,5 +1,6 @@
 import { generateDalleImage } from './dalleClient';
 import { generateGeminiImage } from './geminiClient';
+import { openaiClient } from './openaiClient';
 import { generateStabilityImage } from './stabilityClient';
 
 export type ImageGenerator = 'dalle' | 'gemini' | 'stability';
@@ -35,15 +36,15 @@ export async function generateImageFromService(
     }
 
     // Generate the image using the selected service
-    const result = await (service === 'dalle'
-      ? generateDalleImage(prompt)
+    const result = await (service === 'gemini'
+      ? generateGeminiImage(prompt)
       : service === 'stability'
-        ? generateStabilityImage(prompt, baseImage)
-        : generateGeminiImage(prompt));
+        ? generateStabilityImage(prompt, baseImage, openaiClient.client)
+        : generateDalleImage(prompt));
 
     return {
       ...result,
-      description: `Image ${baseImage ? 'modified' : 'generated'} using ${service === 'dalle' ? 'DALL-E 3' : 'Google Gemini'}`,
+      description: `Image ${baseImage ? 'modified' : 'generated'} using ${service === 'dalle' ? 'DALL-E 3' : service === 'stability' ? 'Stability AI' : 'Google Gemini'}`,
     };
   } catch (error) {
     console.error(`Error in ${service} image generation:`, error);

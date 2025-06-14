@@ -1,9 +1,9 @@
 import FormData from 'form-data';
 import fetch from 'node-fetch';
-import sharp from 'sharp';
+import { OpenAI } from 'openai';
 
 import { STABILITY_API_KEY } from './consts';
-import { openaiClient } from './openaiClient';
+import { resizeImage, translatePrompt } from './utils';
 
 // Module-level variable to cache the client instance (singleton pattern)
 let stabilityClientInstance: {
@@ -33,45 +33,6 @@ function getStabilityClient() {
 
   // Return the existing instance
   return stabilityClientInstance;
-}
-
-/**
- * Resizes an image to meet Stability AI's requirements
- * @param buffer - The image buffer to resize
- * @returns A promise that resolves to a resized image buffer
- */
-async function resizeImage(buffer: Buffer): Promise<Buffer> {
-  const metadata = await sharp(buffer).metadata();
-  if (!metadata.width || !metadata.height) {
-    throw new Error('Could not determine image dimensions');
-  }
-
-  // Determine target dimensions based on aspect ratio
-  let targetWidth: number;
-  let targetHeight: number;
-
-  const aspectRatio = metadata.width / metadata.height;
-  if (aspectRatio > 1) {
-    // Landscape
-    targetWidth = 1024;
-    targetHeight = 576;
-  } else if (aspectRatio < 1) {
-    // Portrait
-    targetWidth = 576;
-    targetHeight = 1024;
-  } else {
-    // Square
-    targetWidth = 768;
-    targetHeight = 768;
-  }
-
-  // Resize the image
-  return sharp(buffer)
-    .resize(targetWidth, targetHeight, {
-      fit: 'cover',
-      position: 'center',
-    })
-    .toBuffer();
 }
 
 /**
@@ -115,57 +76,25 @@ async function pollVideoStatus(
 }
 
 /**
- * Translates a prompt to English using OpenAI
- * @param prompt - The prompt to translate
- * @returns A promise that resolves to the translated prompt
- */
-async function translatePrompt(prompt: string): Promise<string> {
-  try {
-    const completion = await openaiClient.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are a translator. Translate the following text to English. Keep the translation concise and natural. Only return the translated text, nothing else.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      model: 'deepseek-chat',
-      temperature: 0.3,
-    });
-
-    const translatedPrompt = completion.choices[0].message.content?.trim();
-    if (!translatedPrompt) {
-      throw new Error('Failed to translate prompt');
-    }
-
-    return translatedPrompt;
-  } catch (error) {
-    console.error('Error translating prompt:', error);
-    // If translation fails, return the original prompt
-    return prompt;
-  }
-}
-
-/**
  * Generates a video using Stability AI's API based on the provided image
- * @param data - Object containing the image buffer and content type
+ * @param data - Object containing the image buffer, content type, and prompt
+ * @param openaiClient - The OpenAI client instance for translation
  * @returns An object containing the success status and either the video buffer or an error message
  */
-export async function generateStabilityVideo(data: {
-  buffer: Buffer;
-  contentType: string;
-  prompt: string;
-}): Promise<{ success: boolean; data: Buffer | string }> {
+export async function generateStabilityVideo(
+  data: {
+    buffer: Buffer;
+    contentType: string;
+    prompt: string;
+  },
+  openaiClient: OpenAI
+): Promise<{ success: boolean; data: Buffer | string }> {
   try {
     // Get the Stability AI client (reuses existing instance if available)
     const client = getStabilityClient();
 
     // Translate the prompt to English
-    const translatedPrompt = await translatePrompt(data.prompt);
+    const translatedPrompt = await translatePrompt(openaiClient, data.prompt);
 
     // Resize the image to meet API requirements
     const resizedBuffer = await resizeImage(data.buffer);

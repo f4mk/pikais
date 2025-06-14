@@ -11,9 +11,12 @@ export function createOpenAIClient() {
 }
 
 // Export a lazy-loaded client
+let clientInstance: OpenAI | null = null;
 export const openaiClient = {
-  get chat() {
-    const client = createOpenAIClient();
-    return client.chat;
+  get client() {
+    if (!clientInstance) {
+      clientInstance = createOpenAIClient();
+    }
+    return clientInstance;
   },
 };

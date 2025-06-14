@@ -11,6 +11,7 @@ import {
   CLEAR_COMMAND,
   DEFAULT_SYSTEM_MESSAGE,
   DISCORD_TOKEN,
+  EDIT_COMMAND,
   GIMG_COMMAND,
   IMG_COMMAND,
   MAX_MESSAGES,
@@ -37,18 +38,15 @@ import { generateVideoFromService } from './videoService';
 async function handleImageGeneration(
   message: Message,
   prompt: string,
-  command: typeof IMG_COMMAND | typeof GIMG_COMMAND
+  command: typeof IMG_COMMAND | typeof GIMG_COMMAND | typeof EDIT_COMMAND
 ): Promise<void> {
   try {
-    let service: 'dalle' | 'gemini' | 'stability';
-    let serviceName;
-    if (command === IMG_COMMAND) {
-      service = 'dalle';
-      serviceName = 'DALL-E 3';
-    } else if (command === GIMG_COMMAND) {
+    let service: 'dalle' | 'gemini' | 'stability' = 'dalle';
+    let serviceName = 'DALL-E 3';
+    if (command === GIMG_COMMAND) {
       service = 'gemini';
       serviceName = 'Google Gemini';
-    } else {
+    } else if (command === EDIT_COMMAND) {
       service = 'stability';
       serviceName = 'Stability AI';
     }
@@ -406,6 +404,13 @@ export async function main() {
         return;
       }
 
+      // Check if message starts with Stability AI image editing command
+      if (content.slice(0, EDIT_COMMAND.length).toLowerCase().startsWith(EDIT_COMMAND)) {
+        const imagePrompt = content.slice(EDIT_COMMAND.length).trim();
+        await handleImageGeneration(message, imagePrompt, EDIT_COMMAND);
+        return;
+      }
+
       // Check if message starts with video generation command
       if (content.slice(0, VIDEO_COMMAND.length).toLowerCase().startsWith(VIDEO_COMMAND)) {
         await handleVideoGeneration(message);
@@ -430,7 +435,7 @@ export async function main() {
           }
 
           // Make request to Deepseek API with full conversation history
-          const completion = await openaiClient.chat.completions.create({
+          const completion = await openaiClient.client.chat.completions.create({
             messages,
             model: 'deepseek-chat',
             n: 1,

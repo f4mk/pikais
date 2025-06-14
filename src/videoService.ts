@@ -1,3 +1,4 @@
+import { openaiClient } from './openaiClient';
 import { generateStabilityVideo } from './stabilityVideoClient';
 
 /**
@@ -10,8 +11,8 @@ export interface VideoGenerationResult {
 }
 
 /**
- * Generates a video using Stability AI's video generation service
- * @param data - Object containing the image buffer and content type
+ * Generates a video using Stability AI
+ * @param data - Object containing the image buffer, content type, and prompt
  * @returns An object containing the success status and either the video buffer or an error message
  */
 export async function generateVideoFromService(data: {
@@ -21,7 +22,7 @@ export async function generateVideoFromService(data: {
 }): Promise<VideoGenerationResult> {
   try {
     // Generate the video using Stability AI
-    const result = await generateStabilityVideo(data);
+    const result = await generateStabilityVideo(data, openaiClient.client);
 
     return {
       ...result,

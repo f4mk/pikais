@@ -1,7 +1,15 @@
+import FormData from 'form-data';
+import fetch from 'node-fetch';
+import { OpenAI } from 'openai';
+
 import { STABILITY_API_KEY } from './consts';
+import { extractSubjectFromPrompt, resizeImage, translatePrompt } from './utils';
 
 // Module-level variable to cache the client instance (singleton pattern)
-let stabilityClientInstance: any = null;
+let stabilityClientInstance: {
+  apiKey: string;
+  baseUrl: string;
+} | null = null;
 
 /**
  * Gets or creates a Stability AI client instance (implements singleton pattern)
@@ -31,44 +39,62 @@ function getStabilityClient() {
  * Generates an image using Stability AI's API based on the provided prompt
  * @param prompt - The text prompt to generate an image from
  * @param baseImage - Optional base image to use for modifications
+ * @param openaiClient - The OpenAI client instance for translations and subject extraction
  * @returns An object containing the success status and either the image buffer or an error message
  */
 export async function generateStabilityImage(
   prompt: string,
-  baseImage?: File
+  baseImage?: File,
+  openaiClient?: OpenAI
 ): Promise<{ success: boolean; data: Buffer | string }> {
   try {
     // Get the Stability AI client (reuses existing instance if available)
     const client = getStabilityClient();
 
+    // Translate the prompt to English if OpenAI client is provided
+    const translatedPrompt = openaiClient ? await translatePrompt(openaiClient, prompt) : prompt;
+
     let response;
     if (baseImage) {
-      // Image-to-image generation
+      // Convert File to Buffer and resize if needed
+      const arrayBuffer = await baseImage.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const resizedBuffer = await resizeImage(buffer);
+
+      // Extract the subject from the translated prompt for search-and-replace
+      const subject = openaiClient
+        ? await extractSubjectFromPrompt(openaiClient, translatedPrompt)
+        : translatedPrompt;
+
+      // Image-to-image generation using search-and-replace
       const formData = new FormData();
-      formData.append('init_image', baseImage);
-      formData.append('text_prompts[0][text]', prompt);
-      formData.append('text_prompts[0][weight]', '1');
-      formData.append('image_strength', '0.35');
+      formData.append('image', resizedBuffer, {
+        filename: 'image.png',
+        contentType: baseImage.type,
+      });
+
+      // Add search and replace parameters
+      formData.append('search_prompt', subject);
+      formData.append('prompt', translatedPrompt);
       formData.append('cfg_scale', '7');
       formData.append('steps', '30');
-      formData.append('samples', '1');
+      formData.append('seed', '0');
 
-      response = await fetch(
-        `${client.baseUrl}/v1/generation/stable-diffusion-xl-1024-v1-0/erase-and-replace`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${client.apiKey}`,
-          },
-          body: formData,
-        }
-      );
+      response = await fetch(`${client.baseUrl}/v2beta/stable-image/edit/search-and-replace`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${client.apiKey}`,
+          Accept: 'application/json',
+          ...formData.getHeaders(),
+        },
+        body: formData,
+      });
     } else {
       // Text-to-image generation
       const requestBody = {
         text_prompts: [
           {
-            text: prompt,
+            text: translatedPrompt,
             weight: 1,
           },
         ],
@@ -83,6 +109,7 @@ export async function generateStabilityImage(
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Accept: 'application/json',
             Authorization: `Bearer ${client.apiKey}`,
           },
           body: JSON.stringify(requestBody),
@@ -92,10 +119,12 @@ export async function generateStabilityImage(
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('API Error Response:', errorText);
       let errorMessage;
       try {
         const errorJson = JSON.parse(errorText);
         errorMessage = errorJson.message || response.statusText;
+        console.error('API Error Details:', errorJson);
       } catch {
         errorMessage = errorText || response.statusText;
       }
@@ -104,15 +133,16 @@ export async function generateStabilityImage(
 
     const result = await response.json();
 
-    if (!result.artifacts || result.artifacts.length === 0) {
+    if (!result.image) {
+      console.error('No image in response:', result);
       return {
         success: false,
-        data: `Failed to ${baseImage ? 'modify' : 'generate'} image. No images were returned from the API.`,
+        data: `Failed to ${baseImage ? 'modify' : 'generate'} image. No image was returned from the API.`,
       };
     }
 
     // Convert base64 to buffer
-    const buffer = Buffer.from(result.artifacts[0].base64, 'base64');
+    const buffer = Buffer.from(result.image, 'base64');
 
     return {
       success: true,

@@ -1,3 +1,5 @@
+import { OpenAI } from 'openai';
+import sharp from 'sharp';
 import { Readable } from 'stream';
 
 import {
@@ -220,4 +222,119 @@ export async function fetchBufferFromAttachment(attachment: {
     console.error('Error fetching image attachment:', error);
     throw error;
   }
+}
+
+/**
+ * Translates a prompt to English using OpenAI
+ * @param openaiClient - The OpenAI client instance
+ * @param prompt - The prompt to translate
+ * @returns A promise that resolves to the translated prompt
+ */
+export async function translatePrompt(openaiClient: OpenAI, prompt: string): Promise<string> {
+  try {
+    const completion = await openaiClient.chat.completions.create({
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a translator. Translate the following text to English. Keep the translation concise and natural. Only return the translated text, nothing else.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      model: 'deepseek-chat',
+      temperature: 0.3,
+    });
+
+    const translatedPrompt = completion.choices[0].message.content?.trim();
+    if (!translatedPrompt) {
+      throw new Error('Failed to translate prompt');
+    }
+
+    return translatedPrompt;
+  } catch (error) {
+    console.error('Error translating prompt:', error);
+    // If translation fails, return the original prompt
+    return prompt;
+  }
+}
+
+/**
+ * Extracts the main subject from a prompt using OpenAI
+ * @param openaiClient - The OpenAI client instance
+ * @param prompt - The prompt to analyze
+ * @returns A promise that resolves to the extracted subject
+ */
+export async function extractSubjectFromPrompt(
+  openaiClient: OpenAI,
+  prompt: string
+): Promise<string> {
+  try {
+    const completion = await openaiClient.chat.completions.create({
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a prompt analyzer. Extract the main subject or object that should be modified from the given prompt. Return only the subject, nothing else.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      model: 'deepseek-chat',
+      temperature: 0.3,
+    });
+
+    const subject = completion.choices[0].message.content?.trim();
+    if (!subject) {
+      throw new Error('Failed to extract subject from prompt');
+    }
+
+    return subject;
+  } catch (error) {
+    console.error('Error extracting subject from prompt:', error);
+    throw error;
+  }
+}
+
+/**
+ * Resizes an image to meet Stability AI's requirements
+ * @param buffer - The image buffer to resize
+ * @returns A promise that resolves to a resized image buffer
+ */
+export async function resizeImage(buffer: Buffer): Promise<Buffer> {
+  const metadata = await sharp(buffer).metadata();
+  if (!metadata.width || !metadata.height) {
+    throw new Error('Could not determine image dimensions');
+  }
+
+  // Determine target dimensions based on aspect ratio
+  let targetWidth: number;
+  let targetHeight: number;
+
+  const aspectRatio = metadata.width / metadata.height;
+  if (aspectRatio > 1) {
+    // Landscape
+    targetWidth = 1024;
+    targetHeight = 576;
+  } else if (aspectRatio < 1) {
+    // Portrait
+    targetWidth = 576;
+    targetHeight = 1024;
+  } else {
+    // Square
+    targetWidth = 768;
+    targetHeight = 768;
+  }
+
+  // Resize the image
+  return sharp(buffer)
+    .resize(targetWidth, targetHeight, {
+      fit: 'cover',
+      position: 'center',
+    })
+    .toBuffer();
 }

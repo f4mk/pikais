@@ -29,6 +29,7 @@ export const TEMP_COMMAND = '!temp';
 export const SYSTEM_COMMAND = '!system';
 export const IMG_COMMAND = '!img';
 export const GIMG_COMMAND = '!gimg';
+export const EDIT_COMMAND = '!edit';
 export const VIDEO_COMMAND = '!video';
 
 export const DEFAULT_MAX_TOKENS = 4096;
