@@ -332,7 +332,8 @@ export async function extractStyleFromPrompt(
 - icon: For small symbols, app icons, or simple graphical elements
 - any: When the style is unclear or could be any of the above
 
-Return only the style name, nothing else. Default to 'digital_illustration' if unsure.`,
+Return only the style name, nothing else. Default to 'digital_illustration' if unsure. 
+Is the promt contains a direct style name, return the style name that fits the best from the list above.`,
         },
         {
           role: 'user',

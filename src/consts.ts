@@ -87,7 +87,8 @@ export const HELP_TEXT = `🤖 **Available Commands**
 • You can combine multiple commands (e.g., !tokens and !temp)
 • System prompt changes persist until cleared or timeout (2 hours)
 • For image/video generation, you can either attach an image or reply to a message containing an image
-• Response control commands (!tokens, !temp) and system prompt only affect text generation`;
+• Response control commands (!tokens, !temp) and system prompt only affect text generation
+• Recraft.ai automatically detects and applies the best style for your prompt (no need to specify style manually)`;
 
 export const DEFAULT_MAX_TOKENS = 4096;
 export const MAX_ALLOWED_TOKENS = 8192;
