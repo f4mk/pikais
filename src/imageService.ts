@@ -1,9 +1,10 @@
 import { generateDalleImage } from './dalleClient';
 import { generateGeminiImage } from './geminiClient';
 import { openaiClient } from './openaiClient';
+import { generateRecraftImage } from './recraftClient';
 import { generateStabilityImage } from './stabilityClient';
 
-export type ImageGenerator = 'dalle' | 'gemini' | 'stability';
+export type ImageGenerator = 'dalle' | 'gemini' | 'stability' | 'recraft';
 
 /**
  * Interface for image generation result
@@ -17,13 +18,13 @@ export interface ImageGenerationResult {
 /**
  * Generates an image using the specified service
  * @param prompt - The text prompt to generate an image from
- * @param service - The service to use ('dalle' or 'gemini')
- * @param baseImage - Optional base image to use for variations (only supported by DALL-E)
+ * @param service - The service to use ('dalle', 'gemini', 'stability', or 'recraft')
+ * @param baseImage - Optional base image to use for variations
  * @returns An object containing the success status and either the image buffer or an error message
  */
 export async function generateImageFromService(
   prompt: string,
-  service: 'dalle' | 'gemini' | 'stability',
+  service: 'dalle' | 'gemini' | 'stability' | 'recraft',
   baseImage?: File
 ): Promise<ImageGenerationResult> {
   try {
@@ -31,20 +32,32 @@ export async function generateImageFromService(
     if (service === 'gemini' && baseImage) {
       return {
         success: false,
-        data: 'Image modifications are not supported by Google Gemini. Please use DALL-E 3 instead.',
+        data: 'Image modifications are not supported by Google Gemini. Please use DALL-E 3, Stability AI, or Recraft.ai instead.',
       };
     }
 
+    let result: ImageGenerationResult;
     // Generate the image using the selected service
-    const result = await (service === 'gemini'
-      ? generateGeminiImage(prompt)
-      : service === 'stability'
-        ? generateStabilityImage(prompt, baseImage, openaiClient.client)
-        : generateDalleImage(prompt));
+    if (service === 'gemini') {
+      result = await generateGeminiImage(prompt);
+    } else if (service === 'stability') {
+      result = await generateStabilityImage(prompt, baseImage, openaiClient.client);
+    } else if (service === 'recraft') {
+      result = await generateRecraftImage(prompt, baseImage, openaiClient.client);
+    } else {
+      result = await generateDalleImage(prompt);
+    }
+
+    const serviceNames = {
+      dalle: 'DALL-E 3',
+      gemini: 'Google Gemini',
+      stability: 'Stability AI',
+      recraft: 'Recraft.ai',
+    };
 
     return {
       ...result,
-      description: `Image ${baseImage ? 'modified' : 'generated'} using ${service === 'dalle' ? 'DALL-E 3' : service === 'stability' ? 'Stability AI' : 'Google Gemini'}`,
+      description: `Image ${baseImage ? 'modified' : 'generated'} using ${serviceNames[service]}`,
     };
   } catch (error) {
     console.error(`Error in ${service} image generation:`, error);

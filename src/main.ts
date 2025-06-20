@@ -9,6 +9,7 @@ import {
   HELP_COMMAND,
   IMG_COMMAND,
   MAX_MESSAGES,
+  RIMG_COMMAND,
   SYSTEM_COMMAND,
   VIDEO_COMMAND,
 } from './consts';
@@ -196,6 +197,13 @@ export async function main() {
         return;
       }
 
+      // Check if message starts with Recraft.ai image generation command
+      if (content.slice(0, RIMG_COMMAND.length).toLowerCase().startsWith(RIMG_COMMAND)) {
+        const imagePrompt = content.slice(RIMG_COMMAND.length).trim();
+        await handleImageGeneration(message, imagePrompt, RIMG_COMMAND);
+        return;
+      }
+
       // Check if message starts with video generation command
       if (content.slice(0, VIDEO_COMMAND.length).toLowerCase().startsWith(VIDEO_COMMAND)) {
         await handleVideoGeneration(message);
@@ -212,78 +220,67 @@ export async function main() {
       const { content: updatedContent, maxTokens, temperature } = parseCommands(content);
 
       if (message.channel instanceof TextChannel) {
-        try {
-          // Show typing indicator
-          const typingMessage = await message.channel.send({ content: '...' });
+        // Show typing indicator
+        const typingMessage = await message.channel.send({ content: '...' });
 
-          // Add user's message to history
-          messages.push({ role: 'user', content: updatedContent });
+        // Add user's message to history
+        messages.push({ role: 'user', content: updatedContent });
 
-          // Limit history to last MAX_MESSAGES messages while preserving system message at index 0
-          if (messages.length > MAX_MESSAGES) {
-            // Keep the system message at index 0 and only the most recent (MAX_MESSAGES - 1) messages
-            messages = [messages[0], ...messages.slice(-(MAX_MESSAGES - 1))];
-          }
+        // Limit history to last MAX_MESSAGES messages while preserving system message at index 0
+        if (messages.length > MAX_MESSAGES) {
+          // Keep the system message at index 0 and only the most recent (MAX_MESSAGES - 1) messages
+          messages = [messages[0], ...messages.slice(-(MAX_MESSAGES - 1))];
+        }
 
-          // Make request to Deepseek API with full conversation history
-          const completion = await openaiClient.client.chat.completions.create({
-            messages,
-            model: 'deepseek-chat',
-            n: 1,
-            stream: false,
-            max_tokens: maxTokens,
-            temperature: temperature,
-          });
+        // Make request to Deepseek API with full conversation history
+        const completion = await openaiClient.client.chat.completions.create({
+          messages,
+          model: 'deepseek-chat',
+          n: 1,
+          stream: false,
+          max_tokens: maxTokens,
+          temperature: temperature,
+        });
 
-          const responseText = completion.choices[0].message.content?.trim();
+        const responseText = completion.choices[0].message.content?.trim();
 
-          if (!responseText) {
-            await typingMessage.edit({
-              content: "Sorry, I couldn't process that request.",
-            });
-            return;
-          }
-
-          // Add assistant's response to history
-          messages.push({
-            role: 'assistant',
-            content: responseText,
-          });
-
-          // Split response into chunks if it's too long
-          const chunks = splitIntoChunks(responseText);
-
-          if (chunks.length === 0) {
-            await typingMessage.edit({
-              content: 'Sorry, I received an empty response.',
-            });
-            return;
-          }
-
-          // Edit the typing message with the first chunk
+        if (!responseText) {
           await typingMessage.edit({
-            content: chunks[0],
+            content: "Sorry, I couldn't process that request.",
           });
+          return;
+        }
 
-          // Send remaining chunks as regular messages
-          for (let i = 1; i < chunks.length; i++) {
-            if (chunks[i].trim()) {
-              // Only send non-empty chunks
-              await message.channel.send({
-                content: chunks[i],
-                allowedMentions: { repliedUser: false },
-              });
-            }
-          }
-        } catch (error) {
-          console.error(
-            `Error in API request or response handling for message ${message.id}:`,
-            error
-          );
-          await message.reply({
-            content: 'Sorry, something went wrong while processing your request.',
-            allowedMentions: { repliedUser: true },
+        // Add assistant's response to history
+        messages.push({
+          role: 'assistant',
+          content: responseText,
+        });
+
+        // Split response into chunks if it's too long
+        const chunks = splitIntoChunks(responseText);
+
+        if (chunks.length === 0) {
+          await typingMessage.edit({
+            content: 'Sorry, I received an empty response.',
           });
+          return;
+        }
+
+        // Edit the typing message with the first chunk
+        await typingMessage.edit({
+          content: chunks[0],
+        });
+
+        // Send remaining chunks as regular messages
+        for (let i = 1; i < chunks.length; i++) {
+          if (chunks[i].trim()) {
+            // Only send non-empty chunks
+            await message.channel.send({
+              content: chunks[i],
+              allowedMentions: { repliedUser: false },
+            });
+          }
         }
       } else {
         await message.reply({

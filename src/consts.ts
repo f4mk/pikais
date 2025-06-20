@@ -10,6 +10,7 @@ export const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL;
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 export const STABILITY_API_KEY = process.env.STABILITY_API_KEY;
+export const RECRAFT_API_KEY = process.env.RECRAFT_API_KEY;
 
 // Check for required environment variables
 if (!DISCORD_TOKEN) {
@@ -35,6 +36,11 @@ if (!OPENAI_API_KEY) {
 if (!STABILITY_API_KEY) {
   throw new Error('STABILITY_API_KEY is required');
 }
+
+if (!RECRAFT_API_KEY) {
+  throw new Error('RECRAFT_API_KEY is required');
+}
+
 // Constants
 export const MAX_MESSAGES = 20;
 export const CONVERSATION_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
@@ -45,6 +51,7 @@ export const SYSTEM_COMMAND = '!system';
 export const IMG_COMMAND = '!img';
 export const GIMG_COMMAND = '!gimg';
 export const EDIT_COMMAND = '!edit';
+export const RIMG_COMMAND = '!rimg';
 export const VIDEO_COMMAND = '!video';
 export const HELP_COMMAND = '!help';
 
@@ -58,7 +65,8 @@ export const HELP_TEXT = `🤖 **Available Commands**
 **Image Generation:**
 \`!img [prompt]\` - Generate an image using DALL-E 3 (prompt can be in message or replied message)
 \`!gimg [prompt]\` - Generate an image using Google Gemini (prompt can be in message or replied message)
-\`!edit [prompt]\` - Edit an image using Stability AI (requires image attachment or reply to image)
+\`!rimg [prompt]\` - Generate an image using Recraft.ai (prompt can be in message or replied message)
+\`!edit [prompt]\` - Edit an image using Recraft.ai (requires image attachment or reply to image)
 
 **Video Generation:**
 \`!video [prompt]\` - Generate a video using Stability AI (requires image attachment or reply to image)
@@ -69,6 +77,8 @@ export const HELP_TEXT = `🤖 **Available Commands**
 
 **Usage Examples:**
 • \`@BotName !img a cute cat playing with yarn\`
+• \`@BotName !rimg a beautiful sunset in digital art style\`
+• \`@BotName !edit make this more vibrant (with image attachment)\`
 • \`@BotName !system You are a helpful coding assistant\`
 • \`@BotName !tokens=2000 !temp=0.7 Explain quantum computing\`
 

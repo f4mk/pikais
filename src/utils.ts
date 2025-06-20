@@ -12,6 +12,7 @@ import {
   IMG_COMMAND,
   MIN_ALLOWED_TOKENS,
   MIN_TEMPERATURE,
+  RIMG_COMMAND,
   TEMP_COMMAND,
   TOKENS_COMMAND,
   VIDEO_COMMAND,
@@ -309,6 +310,74 @@ export async function extractSubjectFromPrompt(
 }
 
 /**
+ * Extracts the style from a prompt using AI analysis
+ * @param openaiClient - The OpenAI client instance
+ * @param prompt - The prompt to analyze
+ * @returns A promise that resolves to the extracted style (realistic_image, digital_illustration, vector_illustration, icon, or any)
+ */
+export async function extractStyleFromPrompt(
+  openaiClient: OpenAI,
+  prompt: string
+): Promise<string> {
+  try {
+    const completion = await openaiClient.chat.completions.create({
+      messages: [
+        {
+          role: 'system',
+          content: `You are a style analyzer for Recraft.ai image generation. Analyze the given prompt and determine the most appropriate style from these options:
+
+- realistic_image: For photographs, real-life images, or anything that should look like a real photo
+- digital_illustration: For drawings, paintings, cartoons, 3D renders, or stylized artwork
+- vector_illustration: For flat designs, logos, icons, or simple geometric artwork
+- icon: For small symbols, app icons, or simple graphical elements
+- any: When the style is unclear or could be any of the above
+
+Return only the style name, nothing else. Default to 'digital_illustration' if unsure.`,
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      model: 'deepseek-chat',
+      temperature: 0.3,
+    });
+
+    const style = completion.choices[0].message.content?.trim();
+    if (!style) {
+      return 'digital_illustration'; // Default fallback
+    }
+
+    // Validate the style is one of the allowed values
+    const validStyles = [
+      'realistic_image',
+      'digital_illustration',
+      'vector_illustration',
+      'icon',
+      'any',
+    ];
+    if (validStyles.includes(style)) {
+      return style;
+    }
+
+    return 'digital_illustration'; // Default fallback
+  } catch (error) {
+    console.error('Error extracting style from prompt:', error);
+    return 'digital_illustration'; // Default fallback
+  }
+}
+
+/**
+ * Converts a File to Buffer
+ * @param file - The file to convert
+ * @returns A promise that resolves to a buffer
+ */
+export async function fileToBuffer(file: File): Promise<Buffer> {
+  const arrayBuffer = await file.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+/**
  * Resizes an image to meet Stability AI's requirements
  * @param buffer - The image buffer to resize
  * @returns A promise that resolves to a resized image buffer
@@ -359,16 +428,19 @@ export async function handleHelpCommand(message: Message): Promise<void> {
 export async function handleImageGeneration(
   message: Message,
   prompt: string,
-  command: typeof IMG_COMMAND | typeof GIMG_COMMAND | typeof EDIT_COMMAND
+  command: typeof IMG_COMMAND | typeof GIMG_COMMAND | typeof EDIT_COMMAND | typeof RIMG_COMMAND
 ): Promise<void> {
-  let service: 'dalle' | 'gemini' | 'stability' = 'dalle';
+  let service: 'dalle' | 'gemini' | 'stability' | 'recraft' = 'dalle';
   let serviceName = 'DALL-E 3';
   if (command === GIMG_COMMAND) {
     service = 'gemini';
     serviceName = 'Google Gemini';
   } else if (command === EDIT_COMMAND) {
-    service = 'stability';
-    serviceName = 'Stability AI';
+    service = 'recraft';
+    serviceName = 'Recraft.ai';
+  } else if (command === RIMG_COMMAND) {
+    service = 'recraft';
+    serviceName = 'Recraft.ai';
   }
 
   // If prompt is empty, try to get it from the replied message
