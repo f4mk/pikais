@@ -10,6 +10,7 @@ import {
   IMG_COMMAND,
   MAX_MESSAGES,
   RIMG_COMMAND,
+  SEARCH_COMMAND,
   SYSTEM_COMMAND,
   VIDEO_COMMAND,
 } from './consts';
@@ -20,6 +21,7 @@ import {
   getConversationHistory,
 } from './history';
 import { openaiClient } from './openaiClient';
+import { searchClient } from './searchClient';
 import {
   handleHelpCommand,
   handleImageGeneration,
@@ -213,6 +215,83 @@ export async function main() {
       // Check if message starts with help command
       if (content.slice(0, HELP_COMMAND.length).toLowerCase().startsWith(HELP_COMMAND)) {
         await handleHelpCommand(message);
+        return;
+      }
+
+      // Check if message starts with search command
+      if (content.slice(0, SEARCH_COMMAND.length).toLowerCase().startsWith(SEARCH_COMMAND)) {
+        const searchQuery = content.slice(SEARCH_COMMAND.length).trim();
+
+        if (!searchQuery) {
+          await message.reply({
+            content: 'Please provide a search query after the !search command.',
+            allowedMentions: { repliedUser: true },
+          });
+          return;
+        }
+
+        if (message.channel instanceof TextChannel) {
+          // Show typing indicator
+          const typingMessage = await message.channel.send({ content: '...' });
+
+          try {
+            // Make request to Perplexity API
+            const completion = await searchClient.client.chat.completions.create({
+              messages: [{ role: 'user', content: searchQuery }],
+              model: 'sonar-pro',
+              n: 1,
+              stream: false,
+            });
+
+            const responseText = completion.choices[0].message.content?.trim();
+
+            if (!responseText) {
+              await typingMessage.edit({
+                content: "Sorry, I couldn't process that search request.",
+              });
+              return;
+            }
+
+            // Split response into chunks if it's too long
+            const chunks = splitIntoChunks(responseText);
+
+            if (chunks.length === 0) {
+              await typingMessage.edit({
+                content: 'Sorry, I received an empty response.',
+              });
+              return;
+            }
+
+            // Edit the typing message with the first chunk
+            await typingMessage.edit({
+              content: chunks[0],
+            });
+
+            // Send remaining chunks as regular messages
+            for (let i = 1; i < chunks.length; i++) {
+              if (chunks[i].trim()) {
+                // Only send non-empty chunks
+                await message.channel.send({
+                  content: chunks[i],
+                  allowedMentions: { repliedUser: false },
+                });
+              }
+            }
+          } catch (error) {
+            console.error(`Error in search processing for message ${message.id}:`, error);
+            await typingMessage.edit({
+              content:
+                error instanceof Error
+                  ? error.message
+                  : 'Sorry, something went wrong while processing your search request.',
+            });
+          }
+        } else {
+          await message.reply({
+            content: 'I can only respond in text channels.',
+            allowedMentions: { repliedUser: true },
+          });
+        }
         return;
       }
 

@@ -5,6 +5,7 @@ A Discord bot that integrates with various AI services for text, image, and vide
 ## Features
 
 - **Text Generation**: Powered by Deepseek API
+- **Web Search**: Powered by Perplexity AI
 - **Image Generation**:
   - DALL-E 3 via `!img` command
   - Google Gemini via `!gimg` command
@@ -21,6 +22,7 @@ A Discord bot that integrates with various AI services for text, image, and vide
 - `!help` - Shows all available commands and usage instructions
 - `!clear` - Clears conversation history and resets system prompt
 - `!system [prompt]` - Sets a custom system prompt for the AI (only affects text generation)
+- `!search [query]` - Search the web using Perplexity AI
 
 ### Image Generation
 
@@ -81,6 +83,7 @@ The bot analyzes your prompt and selects the most suitable style automatically. 
 @BotName !edit make this cat look like a robot
 @BotName !system You are a helpful coding assistant
 @BotName !tokens=2000 !temp=0.7 Explain quantum computing
+@BotName !search latest news about AI
 ```
 
 ## Code Structure
@@ -93,6 +96,7 @@ The bot analyzes your prompt and selects the most suitable style automatically. 
 - `src/videoService.ts` - Video generation service integration
 - `src/openaiClient.ts` - Deepseek API client setup
 - `src/recraftClient.ts` - Recraft.ai API client for image generation and editing
+- `src/searchClient.ts` - Perplexity API client setup
 
 ## Notes
 
@@ -114,6 +118,8 @@ Required environment variables:
 - `GEMINI_API_KEY` - Your Google Gemini API key for image generation
 - `RECRAFT_API_KEY` - Your Recraft.ai API key for image generation and editing
 - `STABILITY_API_KEY` - Your Stability AI API key for video generation
+- `PERPLEXITY_API_KEY` - Your Perplexity AI API key for web search
+- `PERPLEXITY_API_URL` - Perplexity API endpoint URL (default: https://api.perplexity.ai)
 
 Create a `.env` file in the root directory with these variables:
 
@@ -125,6 +131,8 @@ OPENAI_API_KEY=your_openai_api_key_here
 GEMINI_API_KEY=your_gemini_api_key_here
 RECRAFT_API_KEY=your_recraft_api_key_here
 STABILITY_API_KEY=your_stability_api_key_here
+PERPLEXITY_API_KEY=your_perplexity_api_key_here
+PERPLEXITY_API_URL=https://api.perplexity.ai
 ```
 
 ## Development
@@ -136,3 +144,4 @@ The bot is written in TypeScript and uses:
 - DALL-E 3, Google Gemini, and Recraft.ai for image generation
 - Recraft.ai for image editing
 - Stability AI for video generation
+- Perplexity AI for web search
