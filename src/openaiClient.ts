@@ -1,17 +1,22 @@
 import OpenAI from 'openai';
 
-import { DEEPSEEK_API_KEY, DEEPSEEK_API_URL } from './consts';
+import { GROK_API_KEY, GROK_API_URL } from './consts';
 
-// Create a factory function to initialize the OpenAI client
+export type OpenAIClient = OpenAI & { model: string };
+
 export function createOpenAIClient() {
-  return new OpenAI({
-    baseURL: DEEPSEEK_API_URL,
-    apiKey: DEEPSEEK_API_KEY,
-  });
+  const client = new OpenAI({
+    baseURL: GROK_API_URL,
+    apiKey: GROK_API_KEY,
+  }) as OpenAIClient;
+
+  client.model = 'grok-4';
+
+  return client;
 }
 
 // Export a lazy-loaded client
-let clientInstance: OpenAI | null = null;
+let clientInstance: OpenAIClient | null = null;
 export const openaiClient = {
   get client() {
     if (!clientInstance) {

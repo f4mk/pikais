@@ -1,8 +1,8 @@
 import FormData from 'form-data';
 import fetch from 'node-fetch';
-import OpenAI from 'openai';
 
 import { RECRAFT_API_KEY } from './consts';
+import { OpenAIClient } from './openaiClient';
 import { extractStyleFromPrompt, fileToBuffer } from './utils';
 
 // Module-level variable to cache the client instance (singleton pattern)
@@ -44,7 +44,7 @@ function getRecraftClient() {
 export async function generateRecraftImage(
   prompt: string,
   baseImage?: File,
-  openaiClient?: OpenAI
+  openaiClient?: OpenAIClient
 ): Promise<{ success: boolean; data: Buffer | string; url?: string }> {
   try {
     // Get the Recraft.ai client (reuses existing instance if available)

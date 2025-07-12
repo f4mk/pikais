@@ -314,7 +314,7 @@ export async function main() {
         // Make request to Deepseek API with full conversation history
         const completion = await openaiClient.client.chat.completions.create({
           messages,
-          model: 'deepseek-chat',
+          model: openaiClient.client.model,
           n: 1,
           stream: false,
           max_tokens: maxTokens,

@@ -13,6 +13,8 @@ export const STABILITY_API_KEY = process.env.STABILITY_API_KEY;
 export const RECRAFT_API_KEY = process.env.RECRAFT_API_KEY;
 export const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
 export const PERPLEXITY_API_URL = process.env.PERPLEXITY_API_URL;
+export const GROK_API_KEY = process.env.GROK_API_KEY;
+export const GROK_API_URL = process.env.GROK_API_URL;
 
 // Check for required environment variables
 if (!DISCORD_TOKEN) {
@@ -49,6 +51,14 @@ if (!PERPLEXITY_API_KEY) {
 
 if (!PERPLEXITY_API_URL) {
   throw new Error('PERPLEXITY_API_URL is required');
+}
+
+if (!GROK_API_KEY) {
+  throw new Error('GROK_API_KEY is required');
+}
+
+if (!GROK_API_URL) {
+  throw new Error('GROK_API_URL is required');
 }
 
 // Constants

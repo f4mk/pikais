@@ -1,8 +1,8 @@
 import FormData from 'form-data';
 import fetch from 'node-fetch';
-import { OpenAI } from 'openai';
 
 import { STABILITY_API_KEY } from './consts';
+import { OpenAIClient } from './openaiClient';
 import { extractSubjectFromPrompt, resizeImage, translatePrompt } from './utils';
 
 // Module-level variable to cache the client instance (singleton pattern)
@@ -45,7 +45,7 @@ function getStabilityClient() {
 export async function generateStabilityImage(
   prompt: string,
   baseImage?: File,
-  openaiClient?: OpenAI
+  openaiClient?: OpenAIClient
 ): Promise<{ success: boolean; data: Buffer | string }> {
   try {
     // Get the Stability AI client (reuses existing instance if available)

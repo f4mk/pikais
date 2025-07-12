@@ -1,5 +1,4 @@
 import { AttachmentBuilder, Message } from 'discord.js';
-import { OpenAI } from 'openai';
 import sharp from 'sharp';
 import { Readable } from 'stream';
 
@@ -18,6 +17,7 @@ import {
   VIDEO_COMMAND,
 } from './consts';
 import { generateImageFromService } from './imageService';
+import { OpenAIClient } from './openaiClient';
 import { generateVideoFromService } from './videoService';
 
 // Function to split text into chunks of maximum size
@@ -239,7 +239,7 @@ export async function fetchBufferFromAttachment(attachment: {
  * @param prompt - The prompt to translate
  * @returns A promise that resolves to the translated prompt
  */
-export async function translatePrompt(openaiClient: OpenAI, prompt: string): Promise<string> {
+export async function translatePrompt(openaiClient: OpenAIClient, prompt: string): Promise<string> {
   try {
     const completion = await openaiClient.chat.completions.create({
       messages: [
@@ -253,7 +253,7 @@ export async function translatePrompt(openaiClient: OpenAI, prompt: string): Pro
           content: prompt,
         },
       ],
-      model: 'deepseek-chat',
+      model: openaiClient.model,
       temperature: 0.3,
     });
 
@@ -277,7 +277,7 @@ export async function translatePrompt(openaiClient: OpenAI, prompt: string): Pro
  * @returns A promise that resolves to the extracted subject
  */
 export async function extractSubjectFromPrompt(
-  openaiClient: OpenAI,
+  openaiClient: OpenAIClient,
   prompt: string
 ): Promise<string> {
   try {
@@ -293,7 +293,7 @@ export async function extractSubjectFromPrompt(
           content: prompt,
         },
       ],
-      model: 'deepseek-chat',
+      model: openaiClient.model,
       temperature: 0.3,
     });
 
@@ -316,7 +316,7 @@ export async function extractSubjectFromPrompt(
  * @returns A promise that resolves to the extracted style (realistic_image, digital_illustration, vector_illustration, icon, or any)
  */
 export async function extractStyleFromPrompt(
-  openaiClient: OpenAI,
+  openaiClient: OpenAIClient,
   prompt: string
 ): Promise<string> {
   try {
@@ -340,7 +340,7 @@ Is the promt contains a direct style name, return the style name that fits the b
           content: prompt,
         },
       ],
-      model: 'deepseek-chat',
+      model: openaiClient.model,
       temperature: 0.3,
     });
 
