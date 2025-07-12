@@ -120,4 +120,10 @@ export const DEFAULT_TEMPERATURE = 1.0;
 export const MAX_TEMPERATURE = 2.0;
 export const MIN_TEMPERATURE = 0.0;
 
-export const DEFAULT_SYSTEM_MESSAGE = 'You are a helpful assistant runnig as a discord bot.';
+export const DEFAULT_SYSTEM_MESSAGE = `You are a helpful assistant runnig as a discord bot.When providing 
+  information from sources, include actual URLs in markdown format 
+  like [link text](https://example.com) rather than just reference numbers. 
+  If you cannot provide actual URLs, avoid using reference-style links. 
+  You MUST follow the instructions very precisely. 
+  If a user asks you to use realtime search, 
+  you MUST do it, no excuses.`;

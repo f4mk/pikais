@@ -572,3 +572,41 @@ export async function handleVideoGeneration(message: Message): Promise<void> {
     });
   }
 }
+export const customFetch = async (
+  input: string | URL | Request,
+  init?: RequestInit
+): Promise<Response> => {
+  const cleanHeaders = new Headers();
+
+  if (init?.headers) {
+    const originalHeaders = new Headers(init.headers);
+    for (const [key, value] of originalHeaders.entries()) {
+      if (!key.toLowerCase().startsWith('x-stainless-')) {
+        cleanHeaders.set(key, value);
+      }
+    }
+  }
+
+  let cleanBody = init?.body;
+  if (init?.body) {
+    try {
+      const bodyObj = typeof init.body === 'string' ? JSON.parse(init.body) : init.body;
+      const bodyWithSearchParams = {
+        ...bodyObj,
+        search_parameters: {},
+      };
+      cleanBody = JSON.stringify(bodyWithSearchParams);
+
+      cleanHeaders.delete('content-length');
+    } catch (_error) {
+      cleanBody = init.body;
+    }
+  }
+
+  const cleanInit: RequestInit = {
+    ...init,
+    headers: cleanHeaders,
+    body: cleanBody,
+  };
+  return fetch(input, cleanInit);
+};

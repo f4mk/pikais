@@ -235,6 +235,9 @@ export async function main() {
           const typingMessage = await message.channel.send({ content: '...' });
 
           try {
+            // Add a small delay to ensure the typing indicator is visible
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
             // Make request to Perplexity API
             const completion = await searchClient.client.chat.completions.create({
               messages: [{ role: 'user', content: searchQuery }],
